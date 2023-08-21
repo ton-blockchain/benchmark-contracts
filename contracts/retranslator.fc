@@ -1,0 +1,210 @@
+#include "imports/stdlib.fc";
+#include "imports/utils.fc";
+
+
+{-
+  _# id:uint16 seqno:uint32 public_key:uint256 own_code:^Cell counter_code:^Cell = Storage;
+-}
+
+const max_retranslators = 2048;
+const max_counters = 4;
+const hops_per_report = 8;
+const preference_base = 65535;
+const report_amount = 60000000; ;; 0.06 TON
+
+
+(int, int, int, cell, cell) load_data() inline {
+  ;; my_id, seqno, pubic_key, own_code, counter_code
+  slice ds = get_data().begin_parse();
+  return (ds~load_uint(16), ds~load_uint(32),
+          ds~load_uint(256), ds~load_ref(), ds.preload_ref());
+}
+
+;; arguments for retranslate()
+global int preference;
+global int remaining_hops;
+global int split_hops;
+global int id;
+global int public_key;
+global cell own_code;
+global cell counter_code;
+global slice payload;
+
+;; variables to set in loops & ifs
+global cell next_hop_initstate;
+global slice next_hop_address;
+global int my_shard;
+global int max_shard_depth;
+global cell counter_initstate;
+global int counter_addr_hash;
+
+() send_report(int any_shard?) impure inline {
+  int found? = false;
+  do {
+    int counter_id = random() % max_counters;
+    counter_initstate = counter_init(counter_id, public_key, counter_code);
+    counter_addr_hash = cell_hash(counter_initstate);
+    int counter_shard = counter_addr_hash >> (256 - max_shard_depth);
+    found? = any_shard? ? true : (counter_shard == my_shard);
+  } until found?;
+  var report_msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_uint(0x400, 11) ;; address serialization and wc
+    .store_uint(counter_addr_hash, 256)
+    .store_coins(report_amount)
+    .store_uint(4 + 2, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1) ;; stateinit presents | body in slice
+    .store_ref(counter_initstate)
+    .store_uint(id, 16);
+  send_raw_message(report_msg.end_cell(), 3);
+}
+
+() retranslate(int amount) impure {
+  int next_hop = id; ;; send to itself by default
+  randomize_lt();
+
+  var need_report? = remaining_hops % hops_per_report == 0;
+  var any_shard_hop? = amount | ((random() % preference_base) >= preference);
+
+  max_shard_depth = max_split_from_config();
+  (_, int my_addr_hash) = parse_std_addr(my_address());
+  ;; first `max_shard_depth` bits of an address are the shard id
+  my_shard = my_addr_hash >> (256 - max_shard_depth);
+
+  int found? = false;
+  do {
+    ;; if any shard hop - then just select the random hop
+    ;; if the same needed - then check random retranslators until found
+    next_hop = random() % max_retranslators;
+    next_hop_initstate = retranslator_init(next_hop, public_key, own_code, counter_code);
+    next_hop_address = calc_address(next_hop_initstate);
+    (_, int hop_addr_hash) = parse_std_addr(my_address());
+    int next_hop_shard = hop_addr_hash >> (256 - max_shard_depth);
+    found? = any_shard_hop? ? true : (next_hop_shard == my_shard);
+  } until found?;
+
+  if (need_report?) {
+    ;; ~strdump("reporting");
+    ;; ~dump(id);
+    send_report(any_shard_hop?);
+    if (amount > 0) {
+      amount -= report_amount;
+    }
+  }
+  var hop_msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(next_hop_address)
+    .store_coins(amount > 0 ? amount : 0)
+    .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+    .store_ref(next_hop_initstate);
+  var hop_msg_body = begin_cell()
+    .store_uint(id, 16)
+    .store_uint(remaining_hops, 16)
+    .store_uint(split_hops, 8)
+    .store_uint(preference, 16)
+    .store_slice(payload)
+    .end_cell();
+  hop_msg = hop_msg.store_ref(hop_msg_body);
+  send_raw_message(hop_msg.end_cell(), amount ? 3 : (128 + 2)); ;; revert on errors
+}
+
+{-
+  retransalate#_ id:uint16 remaining_hops:uint16 split_hops:uint8 preference:uint16 payload:Cell = IntMsgBody;
+-}
+
+() main(int msg_value, cell in_msg_full, slice in_msg_body) {
+
+  if (in_msg_body.slice_empty?()) { ;; ignore empty messages
+    return ();
+  }
+  
+  check_spam_config();
+
+  slice cs = in_msg_full.begin_parse();
+  int flags = cs~load_uint(4);
+  if (flags & 1) {
+    return ();
+  }
+  slice sender_address = cs~load_msg_addr();
+  int sender_id = in_msg_body~load_uint(16);
+
+  (id, _, public_key, own_code, counter_code) = load_data();
+
+  slice expected_address = calc_address(retranslator_init(sender_id, public_key, own_code, counter_code));
+  throw_unless(401, equal_slice_bits(expected_address, sender_address));
+
+  remaining_hops = in_msg_body~load_uint(16);
+  split_hops = in_msg_body~load_uint(8);
+  preference = in_msg_body~load_uint(16);
+
+  ifnot(remaining_hops) {
+    return ();
+  }
+  remaining_hops -= 1;
+
+  ;; do not decrease the balance
+  raw_reserve(pair_first(get_balance()) - msg_value, 2);
+
+  payload = in_msg_body; ;; to send with hop. giving an option to set msg size
+
+  if(split_hops) {
+    ;; ~strdump("splitting");
+    ;; ~dump(split_hops);
+    split_hops -= 1;
+
+    msg_value -= 27372000; ;; gas + fwd, it will not make division by 2 perfect, but good enough
+    retranslate(msg_value / 2);
+    retranslate(0); ;; send the rest
+  } else {
+    ;; ~strdump("not splitting");
+    retranslate(0); ;; send all incoming value
+  }
+}
+
+
+() recv_external(slice in_msg) impure {
+  var signature = in_msg~load_bits(512);
+  var cs = in_msg;
+  var (subwallet_id, valid_until, msg_seqno) = (cs~load_uint(32), cs~load_uint(32), cs~load_uint(32));
+  throw_if(35, valid_until <= now());
+  (id, int stored_seqno, public_key, own_code, counter_code) = load_data();
+  throw_unless(33, msg_seqno == stored_seqno);
+  throw_unless(34, subwallet_id == id);
+  throw_unless(35, check_signature(slice_hash(in_msg), signature, public_key));
+  accept_message();
+
+  var mode = cs~load_uint(8);
+  if(mode == 255) { ;; retranslate mode. otherwise act like a wallet
+      (int threads, ;; a number of tx-chains to start
+       remaining_hops,
+       split_hops,
+       int amount,
+       preference) = (cs~load_uint(8),
+                          cs~load_uint(16),
+                          cs~load_uint(8),
+                          cs~load_coins(),
+                          cs~load_uint(16));
+      payload = cs;
+      while (threads > 0) {
+        retranslate(amount);
+        threads -= 1;
+      }
+  } else {
+      ;; just send a message
+      send_raw_message(cs~load_ref(), mode);
+  }
+  set_data(pack_retranslator_data(id, stored_seqno + 1, public_key, own_code, counter_code));
+}
+
+;;
+;; Get methods:
+;;
+
+int seqno() method_id {
+  var (_, stored_seqno, _, _, _) = load_data();
+  return stored_seqno;
+}
+
+int get_public_key() method_id {
+  var (_, _, public_key, _, _) = load_data();
+  return public_key;
+}

@@ -1,0 +1,137 @@
+#include "imports/stdlib.fc";
+#include "imports/utils.fc";
+
+
+{-
+    _$0 initializer:MsgAddress counter:uint256 history:(HashmapE 48 uint64) public_key:uint256 = Storage;
+    _$1 counter:uint256 history:(HashmapE 48 uint64) public_key:uint256 counter_code:^Cell = Storage;
+-}
+
+(int, cell, int, cell) load_data(slice ds) inline {
+    return (ds~load_uint(256), ds~load_dict(),
+            ds~load_uint(256), ds~load_ref());
+}
+
+() save_data(int counter, cell history, int public_key, cell counter_code) impure inline {
+    set_data(
+          begin_cell().store_int(true, 1)
+                      .store_uint(counter, 256)
+                      .store_dict(history)
+                      .store_uint(public_key, 256)
+                      .store_ref(counter_code)
+           .end_cell()
+    );
+}
+
+() main(cell in_msg_full, slice in_msg_body) impure {
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+
+    if (flags & 1) {
+      return ();
+    }
+    slice sender_address = cs~load_msg_addr();
+
+    var ds = get_data().begin_parse();
+    int init? = ds~load_int(1);
+    ifnot (init?) {
+        slice initializer = ds~load_msg_addr();
+        throw_unless(401, equal_slices(initializer, sender_address));
+        cell counter_code = in_msg_body~load_ref();
+        var new_storage = begin_cell()
+                            .store_int(true, 1) ;; setting `inited` to true
+                            ;; removing `initializer` (loaded from ds)
+                            .store_slice(ds) ;; saving counter,history,public_key untouched
+                            .store_ref(counter_code) ;; adding counter_code
+                          .end_cell();
+        set_data(new_storage);
+        return ();
+    }
+
+    int sender_id = in_msg_body~load_uint(16);
+
+    (int counter, cell history, int public_key, cell counter_code) = load_data(ds);
+
+    cell sender_expected_initstate = counter_init(sender_id, public_key, counter_code);
+    slice expected_address = calc_address(sender_expected_initstate);
+
+    throw_unless(401, equal_slice_bits(expected_address, sender_address));
+    accept_message();
+
+    int to_add = in_msg_body~load_uint(32);
+    int from_time = in_msg_body~load_uint(48);
+    int to_time = in_msg_body~load_uint(48);
+    ;;~strdump("sender_id, to_add, from_time, to_time:");
+    ;;~dump(sender_id);
+    ;;~dump(to_add);
+    ;;~dump(from_time);
+    ;;~dump(to_time);
+
+    int timedelta = to_time - from_time;
+    var (per_second, reminder) = divmod(to_add, timedelta);
+
+    int reached_last_second = false;
+    do {
+        int timestep_txs = per_second;
+        (slice history_value, int found?) = history.udict_get?(48, from_time);
+        if (found?) {
+            timestep_txs += history_value~load_uint(64);
+        }
+        from_time += 1;
+        reached_last_second = from_time == to_time;
+        ;;~dump(reached_last_second);
+        if (reached_last_second) {
+            timestep_txs += reminder;
+        }
+        ;;~dump(to_time - from_time);
+        history~udict_set_builder(48, from_time, begin_cell().store_uint(timestep_txs, 64));
+    } until (reached_last_second);
+
+    counter += to_add;
+    ~strdump("counter:");
+    ~dump(counter);
+    save_data(counter, history, public_key, counter_code);
+    return ();
+}
+
+int get_counter() method_id {
+    var ds = get_data().begin_parse().skip_bits(1);
+    int counter = ds~load_uint(256);
+    return counter;
+}
+
+cell get_history() method_id {
+    ;; returns null() if not inited
+    ;; gives a hashmap if all is ok
+    return get_data().begin_parse().preload_dict();
+}
+
+int get_txs_on_sec(int timestamp) method_id {
+    cell history = get_data().begin_parse().preload_dict();
+    throw_if(400, cell_null?(history));
+    (slice history_value, int found?) = history.udict_get?(48, timestamp);
+    ifnot (found?) {
+        return 0;
+    }
+    return history_value~load_uint(64);
+}
+
+int get_txs_on_period(int start, int end) method_id {
+    cell history = get_data().begin_parse().preload_dict();
+    throw_if(400, cell_null?(history));
+    int txs = 0;
+    while (start < end) {
+        (start, slice history_value, int found?) = history.udict_get_nexteq?(48, start);
+        if (found?) {
+            txs += history_value~load_uint(64);
+        } else {
+            start = end;
+        }
+        start += 1;
+    }
+    return txs;
+}
+
+int get_avg_tps_on_period(int start, int end, int step) method_id {
+    return 0;
+}

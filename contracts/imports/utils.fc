@@ -1,0 +1,85 @@
+;; Seconds required to pass between
+;; reports from basic counter to master:
+const master_report_timestep = 2;
+
+;; How much txs to add when receiving
+;; a report from retranslator:
+const txs_per_report = 8;
+
+;; Basic wc for counters and retranslators:
+const workchain = 0;
+
+
+;;
+;; Account states utilities:
+;;
+
+cell pack_retranslator_data(int id, int seqno, int public_key, cell own_code, cell counter_code) inline {
+  return begin_cell().store_uint(id, 16)
+                     .store_uint(seqno, 32)
+                     .store_uint(public_key, 256)
+                     .store_ref(own_code)
+                     .store_ref(counter_code)
+          .end_cell();
+}
+
+cell pack_counter_data(int id, int public_key, int counter, int last_sync, cell own_code) inline {
+  return begin_cell().store_uint(id, 16).store_uint(public_key, 256)
+                     .store_uint(counter, 32).store_uint(last_sync, 48)
+                     .store_ref(own_code)
+          .end_cell();
+}
+
+cell state_init(cell code, cell data) inline {
+  return begin_cell().store_uint(0,2).store_dict(code)
+                     .store_dict(data).store_uint(0,1)
+          .end_cell();
+}
+
+cell retranslator_init(int id, int public_key, cell own_code, cell counter_code) inline {
+    return state_init(own_code, pack_retranslator_data(id, 0, public_key, own_code, counter_code));
+}
+
+cell counter_init(int counter_id, int public_key, cell code) inline {
+    return state_init(code, pack_counter_data(counter_id, public_key, 0, 0, code));
+}
+
+slice calc_address(cell init_state) inline {
+  return begin_cell().store_uint(4, 3)
+                     .store_int(workchain, 8)
+                     .store_uint(
+                       cell_hash(init_state), 256)
+                    .end_cell()
+                   .begin_parse();
+}
+
+
+;;
+;; Exotic utilities:
+;;
+
+const SPAM_CONFIG = -137;
+() check_spam_config() impure inline {
+    cell config = config_param(SPAM_CONFIG);
+    if (config.cell_null?()) {
+        return ();
+    }
+    throw_if(666, config.begin_parse().preload_uint(16) == 1);
+}
+
+int max_split_from_config() impure method_id {
+  {- 
+    workchain#a6 enabled_since:uint32 actual_min_split:(## 8) 
+      min_split:(## 8) max_split:(## 8) { actual_min_split <= min_split }
+      ... = WorkchainDescr;
+
+    _ workchains:(HashmapE 32 WorkchainDescr) = ConfigParam 12;
+  -}
+  slice conf_slice = config_param(12).begin_parse();
+  cell workchains = conf_slice~load_dict();
+  var (wc_data, f?) = workchains.idict_get?(32, workchain);
+  throw_unless(443, f?);
+  wc_data~skip_bits(8 + 32 + 8 + 8);
+  return wc_data~load_uint(8);
+}
+

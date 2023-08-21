@@ -1,0 +1,10 @@
+node_modules
+temp
+build
+yarn.lock
+*.txt
+vim.session
+.idea/
+scripts/query-init-retranslator.boc
+scripts/wallet-retranslator.pk
+scripts/ton_keystore/

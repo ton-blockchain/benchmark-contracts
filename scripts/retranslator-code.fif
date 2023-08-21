@@ -1,0 +1,310 @@
+"Asm.fif" include
+// automatically generated from `contracts/imports/stdlib.fc` `contracts/retranslator.fc` 
+PROGRAM{
+  DECLPROC load_data
+  DECLPROC pack_data
+  DECLPROC calc_state_init
+  DECLPROC calc_address
+  DECLPROC retranslate
+  DECLPROC check_config
+  DECLPROC main
+  DECLPROC recv_external
+  85143 DECLMETHOD seqno
+  78748 DECLMETHOD get_public_key
+  load_data PROCINLINE:<{
+    // 
+    c4 PUSH	//  _1
+    CTOS	//  ds
+    16 LDU	//  _3 ds
+    32 LDU	//  _3 _6 ds
+    256 LDU	//  _3 _6 _9 ds
+    PLDREF	//  _3 _6 _9 _12
+  }>
+  pack_data PROCINLINE:<{
+    //  id seqno public_key code
+    s0 s3 XCHG
+    NEWC	//  code seqno public_key id _4
+    16 STU	//  code seqno public_key _6
+    s1 s2 XCHG	//  code public_key seqno _6
+    32 STU	//  code public_key _8
+    256 STU	//  code _10
+    STREF	//  _11
+    ENDC	//  _12
+  }>
+  calc_state_init PROCINLINE:<{
+    //  id public_key code
+    0 PUSHINT	//  id public_key code _3=0
+    s3 s0 s2 XCPUXC
+    s4 PUSH	//  code _3=0 id _4=0 public_key code
+    pack_data INLINECALLDICT	//  code _3=0 _5
+    OVER	//  code _3=0 _5 _6=0
+    NEWC	//  code _3=0 _5 _6=0 _7
+    2 STU	//  code _3=0 _5 _9
+    s1 s3 XCHG	//  _5 _3=0 code _9
+    STDICT	//  _5 _3=0 _10
+    s1 s2 XCHG	//  _3=0 _5 _10
+    STDICT	//  _3=0 _11
+    1 STU	//  _13
+    ENDC	//  _14
+  }>
+  calc_address PROCINLINE:<{
+    //  init_state
+    HASHCU	//  _1
+    0 PUSHINT	//  _1 _2=0
+    4 PUSHINT	//  _1 _2=0 _3=4
+    NEWC	//  _1 _2=0 _3=4 _4
+    3 STU	//  _1 _2=0 _6
+    8 STI	//  _1 _8
+    256 STU	//  _10
+    ENDC	//  _11
+    CTOS	//  _12
+  }>
+  retranslate PROC:<{
+    //  preference remaining_hops split_hops id public_key code payload amount
+    s4 PUSH	//  preference remaining_hops split_hops id public_key code payload amount next_hop
+    LTIME
+    ADDRAND
+    RANDU256	//  preference remaining_hops split_hops id public_key code payload amount next_hop _10
+    16 PUSHPOW2DEC	//  preference remaining_hops split_hops id public_key code payload amount next_hop _10 _11=65535
+    MOD	//  preference remaining_hops split_hops id public_key code payload amount next_hop _12
+    s9 PUSH	//  preference remaining_hops split_hops id public_key code payload amount next_hop _12 preference
+    GEQ	//  preference remaining_hops split_hops id public_key code payload amount next_hop _13
+    s2 s(-1) PUXC	//  preference remaining_hops split_hops id public_key code payload amount next_hop amount _13
+    OR	//  preference remaining_hops split_hops id public_key code payload amount next_hop _14
+    IF:<{	//  preference remaining_hops split_hops id public_key code payload amount next_hop
+      DROP	//  preference remaining_hops split_hops id public_key code payload amount
+      RANDU256	//  preference remaining_hops split_hops id public_key code payload amount _15
+      11 MODPOW2#	//  preference remaining_hops split_hops id public_key code payload amount next_hop
+    }>ELSE<{	//  preference remaining_hops split_hops id public_key code payload amount next_hop
+      MYADDR	//  preference remaining_hops split_hops id public_key code payload amount next_hop _20
+      REWRITESTDADDR	//  preference remaining_hops split_hops id public_key code payload amount next_hop _103 _104
+      NIP	//  preference remaining_hops split_hops id public_key code payload amount next_hop my_addr
+      254 RSHIFT#	//  preference remaining_hops split_hops id public_key code payload amount next_hop my_shard
+      TRUE	//  preference remaining_hops split_hops id public_key code payload amount next_hop my_shard not_found?
+      WHILE:<{
+      }>DO<{	//  preference remaining_hops split_hops id public_key code payload amount next_hop my_shard
+        NIP	//  preference remaining_hops split_hops id public_key code payload amount my_shard
+        RANDU256	//  preference remaining_hops split_hops id public_key code payload amount my_shard _29
+        11 MODPOW2#	//  preference remaining_hops split_hops id public_key code payload amount my_shard next_hop
+        s0 s5 s4 PUSH3	//  preference remaining_hops split_hops id public_key code payload amount my_shard next_hop next_hop public_key code
+        calc_state_init INLINECALLDICT	//  preference remaining_hops split_hops id public_key code payload amount my_shard next_hop next_hop_initstate
+        HASHCU	//  preference remaining_hops split_hops id public_key code payload amount my_shard next_hop _35
+        254 RSHIFT#	//  preference remaining_hops split_hops id public_key code payload amount my_shard next_hop next_hop_shard
+        s2 s(-1) PUXC	//  preference remaining_hops split_hops id public_key code payload amount my_shard next_hop my_shard next_hop_shard
+        EQUAL	//  preference remaining_hops split_hops id public_key code payload amount my_shard next_hop _40
+        NOT	//  preference remaining_hops split_hops id public_key code payload amount my_shard next_hop not_found?
+        s1 s2 XCHG	//  preference remaining_hops split_hops id public_key code payload amount next_hop my_shard not_found?
+      }>	//  preference remaining_hops split_hops id public_key code payload amount next_hop my_shard
+      DROP	//  preference remaining_hops split_hops id public_key code payload amount next_hop
+    }>
+    s0 s4 s3 XCHG3	//  preference remaining_hops split_hops id amount payload next_hop public_key code
+    calc_state_init INLINECALLDICT	//  preference remaining_hops split_hops id amount payload next_hop_initstate
+    DUP	//  preference remaining_hops split_hops id amount payload next_hop_initstate next_hop_initstate
+    calc_address INLINECALLDICT	//  preference remaining_hops split_hops id amount payload next_hop_initstate next_hop_address
+    7 PUSHINT	//  preference remaining_hops split_hops id amount payload next_hop_initstate next_hop_address _51
+    24 PUSHINT	//  preference remaining_hops split_hops id amount payload next_hop_initstate next_hop_address _51 _52=24
+    NEWC	//  preference remaining_hops split_hops id amount payload next_hop_initstate next_hop_address _51 _52=24 _53
+    6 STU	//  preference remaining_hops split_hops id amount payload next_hop_initstate next_hop_address _51 _55
+    ROT	//  preference remaining_hops split_hops id amount payload next_hop_initstate _51 _55 next_hop_address
+    STSLICER	//  preference remaining_hops split_hops id amount payload next_hop_initstate _51 _56
+    s4 PUSH	//  preference remaining_hops split_hops id amount payload next_hop_initstate _51 _56 amount
+    0 GTINT	//  preference remaining_hops split_hops id amount payload next_hop_initstate _51 _56 _58
+    IF:<{	//  preference remaining_hops split_hops id amount payload next_hop_initstate _51 _56
+      s4 PUSH	//  preference remaining_hops split_hops id amount payload next_hop_initstate _51 _56 _59
+    }>ELSE<{	//  preference remaining_hops split_hops id amount payload next_hop_initstate _51 _56
+      0 PUSHINT	//  preference remaining_hops split_hops id amount payload next_hop_initstate _51 _56 _59=0
+    }>
+    STGRAMS	//  preference remaining_hops split_hops id amount payload next_hop_initstate _51 _61
+    108 STU	//  preference remaining_hops split_hops id amount payload next_hop_initstate _77
+    STREF	//  preference remaining_hops split_hops id amount payload msg
+    s0 s3 XCHG
+    NEWC	//  preference remaining_hops split_hops msg amount payload id _80
+    16 STU	//  preference remaining_hops split_hops msg amount payload _82
+    s1 s5 XCHG	//  preference payload split_hops msg amount remaining_hops _82
+    16 STU	//  preference payload split_hops msg amount _84
+    s1 s3 XCHG	//  preference payload amount msg split_hops _84
+    8 STU	//  preference payload amount msg _86
+    s1 s4 XCHG	//  msg payload amount preference _86
+    16 STU	//  msg payload amount _88
+    ROT	//  msg amount _88 payload
+    STSLICER	//  msg amount _89
+    ENDC	//  msg amount msg_body
+    ROT	//  amount msg_body msg
+    STREF	//  amount msg
+    ENDC	//  amount _92
+    OVER	//  amount _92 amount
+    IF:<{	//  amount _92
+      SWAP	//  _92 amount
+      0 GTINT	//  _92 _95
+      IF:<{	//  _92
+        3 PUSHINT	//  _92 _96=3
+      }>ELSE<{	//  _92
+        130 PUSHINT	//  _92 _96
+      }>	//  _92 _93
+    }>ELSE<{	//  amount _92
+      NIP	//  _92
+      64 PUSHINT	//  _92 _93=64
+    }>
+    SENDRAWMSG
+  }>
+  check_config PROCINLINE:<{
+    // 
+    -137 PUSHINT	//  _1=-137
+    CONFIGOPTPARAM	//  config
+    DUP	//  config config
+    ISNULL	//  config _3
+    IF:<{	//  config
+      DROP	// 
+    }>ELSE<{	//  config
+      CTOS	//  _5
+      16 PLDU	//  _7
+      1 EQINT	//  _9
+      666 THROWIF
+    }>
+  }>
+  main PROC:<{
+    //  msg_value in_msg_full in_msg_body
+    DUP	//  msg_value in_msg_full in_msg_body in_msg_body
+    SEMPTY	//  msg_value in_msg_full in_msg_body _3
+    IFJMP:<{	//  msg_value in_msg_full in_msg_body
+      3 BLKDROP	// 
+    }>	//  msg_value in_msg_full in_msg_body
+    check_config INLINECALLDICT
+    SWAP	//  msg_value in_msg_body in_msg_full
+    CTOS	//  msg_value in_msg_body cs
+    4 LDU	//  msg_value in_msg_body flags cs
+    SWAP
+    1 PUSHINT	//  msg_value in_msg_body cs flags _11=1
+    AND	//  msg_value in_msg_body cs _12
+    IFJMP:<{	//  msg_value in_msg_body cs
+      3 BLKDROP	// 
+    }>	//  msg_value in_msg_body cs
+    LDMSGADDR	//  msg_value in_msg_body _63 _62
+    DROP	//  msg_value in_msg_body sender_address
+    SWAP	//  msg_value sender_address in_msg_body
+    16 LDU	//  msg_value sender_address sender_id in_msg_body
+    load_data INLINECALLDICT	//  msg_value sender_address sender_id in_msg_body _66 _67 _68 _69
+    s2 POP	//  msg_value sender_address sender_id in_msg_body id code public_key
+    s4 s4 s1 XCPU2	//  msg_value sender_address public_key in_msg_body id code sender_id public_key code
+    calc_state_init INLINECALLDICT	//  msg_value sender_address public_key in_msg_body id code _26
+    calc_address INLINECALLDICT	//  msg_value sender_address public_key in_msg_body id code _27
+    s0 s5 XCHG2	//  msg_value code public_key in_msg_body id _27 sender_address
+    SDEQ	//  msg_value code public_key in_msg_body id _28
+    401 THROWIFNOT
+    SWAP	//  msg_value code public_key id in_msg_body
+    16 LDU	//  msg_value code public_key id remaining_hops in_msg_body
+    8 LDU	//  msg_value code public_key id remaining_hops split_hops in_msg_body
+    16 LDU	//  msg_value code public_key id remaining_hops split_hops preference in_msg_body
+    s3 PUSH	//  msg_value code public_key id remaining_hops split_hops preference in_msg_body remaining_hops
+    IFNOTJMP:<{	//  msg_value code public_key id remaining_hops split_hops preference in_msg_body
+      8 BLKDROP	// 
+    }>	//  msg_value code public_key id remaining_hops split_hops preference in_msg_body
+    s0 s3 XCHG	//  msg_value code public_key id in_msg_body split_hops preference remaining_hops
+    DEC	//  msg_value code public_key id in_msg_body split_hops preference remaining_hops
+    s2 PUSH	//  msg_value code public_key id in_msg_body split_hops preference remaining_hops split_hops
+    IF:<{	//  msg_value code public_key id in_msg_body split_hops preference remaining_hops
+      s0 s2 XCHG	//  msg_value code public_key id in_msg_body remaining_hops preference split_hops
+      DEC	//  msg_value code public_key id in_msg_body remaining_hops preference split_hops
+      BALANCE	//  msg_value code public_key id in_msg_body remaining_hops preference split_hops _46
+      FIRST	//  msg_value code public_key id in_msg_body remaining_hops preference split_hops _47
+      s8 PUSH	//  msg_value code public_key id in_msg_body remaining_hops preference split_hops _47 msg_value
+      SUB	//  msg_value code public_key id in_msg_body remaining_hops preference split_hops _48
+      2 PUSHINT	//  msg_value code public_key id in_msg_body remaining_hops preference split_hops _48 _49=2
+      RAWRESERVE
+      s0 s7 XCHG
+      27372000 PUSHINT	//  split_hops code public_key id in_msg_body remaining_hops preference msg_value _51=27372000
+      SUB	//  split_hops code public_key id in_msg_body remaining_hops preference msg_value
+      1 RSHIFT#	//  split_hops code public_key id in_msg_body remaining_hops preference _54
+      s1 s2 s(-2) PU2XC
+      s9 s6 s(-2) PU2XC
+      s9 s10 s(-2) PU2XC
+      s9 s(-1) PUXC	//  split_hops code public_key id in_msg_body remaining_hops preference preference remaining_hops split_hops id public_key code in_msg_body _54
+      retranslate CALLDICT
+      s0 s6 XCHG
+      s4 s5 s4 XCHG3
+      -1 PUSHINT	//  preference remaining_hops split_hops id public_key code in_msg_body _56=-1
+      retranslate CALLDICT
+    }>ELSE<{	//  msg_value code public_key id in_msg_body split_hops preference remaining_hops
+      s7 POP	//  remaining_hops code public_key id in_msg_body split_hops preference
+      s0 s6 XCHG
+      s5 s5 XCHG2
+      s4 s1 s4 XCHG3
+      0 PUSHINT	//  preference remaining_hops split_hops id public_key code in_msg_body _58=0
+      retranslate CALLDICT
+    }>
+  }>
+  recv_external PROC:<{
+    //  in_msg
+    9 PUSHPOW2	//  in_msg _3=512
+    LDSLICEX	//  signature in_msg
+    DUP	//  signature in_msg cs
+    32 LDU	//  signature in_msg _9 cs
+    32 LDU	//  signature in_msg _9 _12 cs
+    32 LDU	//  signature in_msg subwallet_id valid_until msg_seqno cs
+    s0 s2 XCHG
+    NOW	//  signature in_msg subwallet_id cs msg_seqno valid_until _19
+    LEQ	//  signature in_msg subwallet_id cs msg_seqno _20
+    35 THROWIF
+    load_data INLINECALLDICT	//  signature in_msg subwallet_id cs msg_seqno id stored_seqno public_key code
+    s4 s2 XCPU	//  signature in_msg subwallet_id cs code id stored_seqno public_key msg_seqno stored_seqno
+    EQUAL	//  signature in_msg subwallet_id cs code id stored_seqno public_key _28
+    33 THROWIFNOT
+    s5 s2 XCPU	//  signature in_msg public_key cs code id stored_seqno subwallet_id id
+    EQUAL	//  signature in_msg public_key cs code id stored_seqno _31
+    34 THROWIFNOT
+    s0 s5 XCHG	//  signature stored_seqno public_key cs code id in_msg
+    HASHSU	//  signature stored_seqno public_key cs code id _34
+    s0 s6 s4 XC2PU	//  id stored_seqno public_key cs code _34 signature public_key
+    CHKSIGNU	//  id stored_seqno public_key cs code _35
+    35 THROWIFNOT
+    ACCEPT
+    SWAP	//  id stored_seqno public_key code cs
+    8 LDU	//  id stored_seqno public_key code mode cs
+    OVER
+    8 PUSHPOW2DEC	//  id stored_seqno public_key code mode cs mode _42=255
+    EQUAL	//  id stored_seqno public_key code mode cs _43
+    IF:<{	//  id stored_seqno public_key code mode cs
+      NIP	//  id stored_seqno public_key code cs
+      8 LDU	//  id stored_seqno public_key code _49 cs
+      16 LDU	//  id stored_seqno public_key code _49 _52 cs
+      8 LDU	//  id stored_seqno public_key code _49 _52 _55 cs
+      LDGRAMS	//  id stored_seqno public_key code _49 _52 _55 _58 cs
+      16 LDU	//  id stored_seqno public_key code cnt hops split_hops amount preference cs
+      WHILE:<{
+        s5 PUSH	//  id stored_seqno public_key code cnt hops split_hops amount preference cs cnt
+        0 GTINT	//  id stored_seqno public_key code cnt hops split_hops amount preference cs _64
+      }>DO<{	//  id stored_seqno public_key code cnt hops split_hops amount preference cs
+        s1 s4 s3 PUSH3
+        s12 s10 s9 PUSH3
+        s6 s8 PUSH2	//  id stored_seqno public_key code cnt hops split_hops amount preference cs preference hops split_hops id public_key code cs amount
+        retranslate CALLDICT
+        s0 s5 XCHG	//  id stored_seqno public_key code cs hops split_hops amount preference cnt
+        DEC	//  id stored_seqno public_key code cs hops split_hops amount preference cnt
+        s0 s5 XCHG	//  id stored_seqno public_key code cnt hops split_hops amount preference cs
+      }>	//  id stored_seqno public_key code cnt hops split_hops amount preference cs
+      6 BLKDROP	//  id stored_seqno public_key code
+    }>ELSE<{	//  id stored_seqno public_key code mode cs
+      LDREF	//  id stored_seqno public_key code mode _100 _99
+      DROP	//  id stored_seqno public_key code mode _68
+      SWAP	//  id stored_seqno public_key code _68 mode
+      SENDRAWMSG
+    }>
+    s0 s2 XCHG	//  id code public_key stored_seqno
+    INC	//  id code public_key _72
+    s0 s2 XCHG	//  id _72 public_key code
+    pack_data INLINECALLDICT	//  _73
+    c4 POP
+  }>
+  seqno PROC:<{
+    // 
+    load_data INLINECALLDICT	//  _5 _6 _7 _8
+    s2 s3 XCHG
+    3 BLKDROP	//  stored_seqno
+  }>
+  get_public_key PROC:<{
+    // 
+    load_data INLINECALLDICT	//  _5 _6 _7 _8
+    s1 s3 XCHG
+    3 BLKDROP	//  public_key
+  }>
+}END>c
