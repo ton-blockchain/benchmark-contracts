@@ -8,3 +8,4 @@ vim.session
 scripts/query-init-retranslator.boc
 scripts/wallet-retranslator.pk
 scripts/ton_keystore/
+wallet-retranslator.pk

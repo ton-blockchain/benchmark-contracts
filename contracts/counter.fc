@@ -15,7 +15,7 @@
   _# id:uint16 public_key:uint256 counter:uint32 last_sync:uint48 own_code:^Cell= Storage;
 -}
 
-const min_balance = 10000000; ;; 0.01 TON
+const min_balance = 5000000; ;; 0.005 TON
 const count_report_as_tx = -1;
 
 ;; id, public_key, counter, last_sync
@@ -29,7 +29,7 @@ const count_report_as_tx = -1;
 
 () push_to_master(slice master, int my_id, int counter, int last_sync) impure inline {
     var msg = begin_cell()
-                .store_uint(0x18, 6)
+                .store_uint(0x10, 6) ;; non-bounce to prevent extra txs
                 .store_slice(master)
                 .store_coins(0)
                 .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)

@@ -91,10 +91,8 @@ export class MasterCounter implements Contract {
     }
 
     async getTpsOnPeriod(provider: ContractProvider, from: number, to: number) {
-        let args = new TupleBuilder();
-        args.writeNumber(from);
-        args.writeNumber(to);
-        const result = await provider.get('get_tps_on_period', args.build());
-        return result.stack.readNumber();
+        const txs = await this.getTxsOnPeriod(provider, from, to);
+        const timedelta = BigInt(to - from);
+        return txs / timedelta;
     }
 }

@@ -6,9 +6,7 @@ import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
 import { Counter } from '../wrappers/Counter';
 import { KeyPair, getSecureRandomBytes, keyPairFromSeed } from 'ton-crypto';
-import { setMasterCounter, printSpamChain } from '../wrappers/utils';
-
-const now = (): number => Math.floor(Date.now() / 1000);
+import { setMasterCounter, printSpamChain, now } from '../wrappers/utils';
 
 describe('MasterCounter', () => {
     let blockchain: Blockchain;
@@ -18,7 +16,8 @@ describe('MasterCounter', () => {
     let counter0: SandboxContract<Counter>;
     let deployer: SandboxContract<TreasuryContract>;
     let spamConfig: RetranslatorOptions = {
-        amount: toNano(500),
+        amount: toNano(1300),
+        hops: 2000,
         threads: 1,
         splitHops: 0,
         sameShardProbability: 0,
@@ -70,7 +69,7 @@ describe('MasterCounter', () => {
         // await blockchain.setVerbosityForAddress(masterCounter.address, { vmLogs: 'vm_logs' });
         await deployer.send({
             to: retranslator0.address, // topup
-            value: toNano('10000'),
+            value: toNano('100000'),
             bounce: false,
         });
         const startResult = await retranslator0.sendStart(spamConfig);
@@ -80,58 +79,68 @@ describe('MasterCounter', () => {
             deploy: true,
             success: true,
         });
-        // let failedTxs: number[] = [];
-        // expect(startResult.transactions).not.toHaveTransaction({
-        //     success: false,
-        //     body: (x) => {
-        //         if (x) failedTxs.push(x.bits.length);
-        //         return false;
-        //     },
-        // });
-
-        // console.log(failedTxs);
 
         printSpamChain(startResult.transactions, masterCounter.address);
         // printTransactionFees(startResult.transactions)
     });
-    // it('should report to master', async () => {
-    //     const counterAmountB = await masterCounter.getCounter();
-    //     console.log("counter before 0th's 10:", counterAmountB);
-    //     const masterContract = await blockchain.getContract(masterCounter.address);
-    //     const t = now();
-    //     const res = masterContract.receiveMessage(
-    //         internal({
-    //             from: counter0.address,
-    //             to: masterCounter.address,
-    //             value: toNano('0.4'),
-    //             body: MasterCounter.addMessageBody(0, 10, t, t + 10),
-    //         })
-    //     );
-    //     const counterAmountA = await masterCounter.getCounter();
-    //     console.log("counter after 0th's 10:", counterAmountA);
-    // });
-    // it('should report to master from 100th counter', async () => {
-    //     const counterAmountB = await masterCounter.getCounter();
-    //     console.log("counter before 100th's 20:", counterAmountB);
-    //     await blockchain.setVerbosityForAddress(masterCounter.address, { vmLogs: 'vm_logs' });
-    //     const masterContract = await blockchain.getContract(masterCounter.address);
-    //     const t = now();
-    //     const counter100 = blockchain.openContract(
-    //         Counter.createFromConfig({ id: 100, publicKey: keypair.publicKey }, counterCode)
-    //     );
-    //     const res = masterContract.receiveMessage(
-    //         internal({
-    //             from: counter100.address,
-    //             to: masterCounter.address,
-    //             value: toNano('2'),
-    //             body: MasterCounter.addMessageBody(100, 20, t, t + 20),
-    //         })
-    //     );
-    //     const counterAmountA = await masterCounter.getCounter();
-    //     console.log("counter after 100th's 20:", counterAmountA);
-    // });
+    const t = now();
+    it('should report to master from 0th', async () => {
+        const counterAmountB = await masterCounter.getCounter();
+        console.log("counter before 0th's 10:", counterAmountB);
+        const masterContract = await blockchain.getContract(masterCounter.address);
+        masterContract.receiveMessage(
+            internal({
+                from: counter0.address,
+                to: masterCounter.address,
+                value: toNano('0.4'),
+                body: MasterCounter.addMessageBody(0, 10, t, t + 10),
+            })
+        );
+        const counterAmountA = await masterCounter.getCounter();
+        console.log("counter after 0th's 10:", counterAmountA);
+    });
+    it('should report to master from 100th counter', async () => {
+        const counterAmountB = await masterCounter.getCounter();
+        console.log("counter before 100th's 20:", counterAmountB);
+        // await blockchain.setVerbosityForAddress(masterCounter.address, { vmLogs: 'vm_logs' });
+        const masterContract = await blockchain.getContract(masterCounter.address);
+        const counter100 = blockchain.openContract(
+            Counter.createFromConfig({ id: 100, publicKey: keypair.publicKey }, counterCode)
+        );
+        masterContract.receiveMessage(
+            internal({
+                from: counter100.address,
+                to: masterCounter.address,
+                value: toNano('2'),
+                body: MasterCounter.addMessageBody(100, 20, t, t + 20),
+            })
+        );
+        const counterAmountA = await masterCounter.getCounter();
+        console.log("counter after 100th's 20:", counterAmountA);
+    });
     it('should show counter', async () => {
         const counterAmount = await masterCounter.getCounter();
-        console.log(counterAmount);
+        console.log('Total counter:', counterAmount);
+    });
+    it('should show the result', async () => {
+        const history = await masterCounter.getHistory();
+        let secTxs: bigint[] = [];
+        console.table(
+            history
+                .keys()
+                .sort()
+                .map((time) => {
+                    const txs = history.get(time);
+                    if (!txs) return undefined;
+                    secTxs.push(txs);
+                    return {
+                        time,
+                        txs,
+                    };
+                })
+        );
+        const counterAmount = await masterCounter.getCounter();
+        console.log('Total counter:', counterAmount);
+        console.log('Avg TPS:', counterAmount / BigInt(secTxs.length));
     });
 });

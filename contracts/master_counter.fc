@@ -142,22 +142,3 @@ int get_txs_on_period(int start, int end) method_id {
     }
     return txs;
 }
-
-int get_avg_tps_on_period(int start, int end, int step) method_id {
-    ;; WIP
-    cell history = get_data().begin_parse().preload_dict();
-    throw_if(400, cell_null?(history));
-    int txs = 0;
-    int fill_step = 0;
-    while (start < end) {
-        (start, slice history_value, int found?) = history.udict_get_nexteq?(48, start);
-        fill_step += 1;
-        if (found?) {
-            txs += history_value~load_uint(64);
-        } else {
-            start = end;
-        }
-        start += 1;
-    }
-    return txs;
-}

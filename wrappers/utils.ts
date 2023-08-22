@@ -1,7 +1,8 @@
 import { Address, Transaction } from 'ton-core';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, readFile } from 'fs/promises';
 import path from 'path';
 import { Blockchain } from '@ton-community/sandbox';
+import { getSecureRandomBytes, keyPairFromSecretKey, keyPairFromSeed } from 'ton-crypto';
 
 export const auto = path.join(__dirname, '..', 'contracts', 'auto');
 
@@ -131,3 +132,17 @@ export async function printSpamChain(transactions: Transaction[], masterCounter?
             .filter((v) => v !== undefined)
     );
 }
+
+export async function readCreateKeyPair(filename = "wallet-retranslator.pk") {
+    try {
+        const secretKey = await readFile(filename);
+        return keyPairFromSecretKey(secretKey);
+    } catch {
+        const keypair = keyPairFromSeed(await getSecureRandomBytes(32));
+        await writeFile(filename, keypair.secretKey);
+        return keypair;
+    }
+}
+
+
+export const now = (): number => Math.floor(Date.now() / 1000);

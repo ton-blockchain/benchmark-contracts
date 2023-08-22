@@ -6,10 +6,13 @@
   _# id:uint16 seqno:uint32 public_key:uint256 own_code:^Cell counter_code:^Cell = Storage;
 -}
 
-const max_retranslators = 2048;
+const monkey_mode = 0;
+const max_retranslators = 1024;
 const max_counters = 4;
 const hops_per_report = 8;
 const preference_base = 65535;
+;; This amount should be enough for counter to init
+;; and send a report to master:
 const report_amount = 60000000; ;; 0.06 TON
 
 
@@ -48,7 +51,7 @@ global int counter_addr_hash;
     found? = any_shard? ? true : (counter_shard == my_shard);
   } until found?;
   var report_msg = begin_cell()
-    .store_uint(0x18, 6)
+    .store_uint(0x10, 6)
     .store_uint(0x400, 11) ;; address serialization and wc
     .store_uint(counter_addr_hash, 256)
     .store_coins(report_amount)
@@ -104,7 +107,11 @@ global int counter_addr_hash;
     .store_slice(payload)
     .end_cell();
   hop_msg = hop_msg.store_ref(hop_msg_body);
-  send_raw_message(hop_msg.end_cell(), amount ? 3 : (128 + 2)); ;; revert on errors
+
+  int send_mode = 128 + 2;
+  if (amount) { send_mode = 3; }
+  if (monkey_mode) { send_mode += 32; } ;; self-destroy if zero balance
+  send_raw_message(hop_msg.end_cell(), send_mode);
 }
 
 {-
@@ -141,8 +148,10 @@ global int counter_addr_hash;
   }
   remaining_hops -= 1;
 
-  ;; do not decrease the balance
-  raw_reserve(pair_first(get_balance()) - msg_value, 2);
+  ifnot (monkey_mode) {
+    ;; do not decrease the balance
+    raw_reserve(pair_first(get_balance()) - msg_value, 2);
+  }
 
   payload = in_msg_body; ;; to send with hop. giving an option to set msg size
 
