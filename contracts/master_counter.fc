@@ -79,19 +79,30 @@
         }
         from_time += 1;
         reached_last_second = from_time == to_time;
-        ;;~dump(reached_last_second);
         if (reached_last_second) {
             timestep_txs += reminder;
         }
-        ;;~dump(to_time - from_time);
-        history~udict_set_builder(48, from_time, begin_cell().store_uint(timestep_txs, 64));
+        history~udict_set_builder(48, from_time - 1, begin_cell().store_uint(timestep_txs, 64));
     } until (reached_last_second);
 
     counter += to_add;
-    ~strdump("counter:");
-    ~dump(counter);
     save_data(counter, history, public_key, counter_code);
     return ();
+}
+
+() recv_external(slice in_msg) impure { ;; withdraw tons
+    var signature = in_msg~load_bits(512);
+    var cs = in_msg;
+    var (subwallet_id, valid_until, msg_seqno) = (cs~load_uint(32), cs~load_uint(32), cs~load_uint(32));
+    throw_if(35, valid_until <= now());
+    var ds = get_data().begin_parse();
+    int init? = ds~load_int(1);
+    (_, _, int public_key, _) = load_data(ds);
+    throw_unless(35, check_signature(slice_hash(in_msg), signature, public_key));
+    accept_message();
+    var mode = cs~load_uint(8);
+    ;; just send a message
+    send_raw_message(cs~load_ref(), mode);
 }
 
 int get_counter() method_id {
@@ -133,5 +144,20 @@ int get_txs_on_period(int start, int end) method_id {
 }
 
 int get_avg_tps_on_period(int start, int end, int step) method_id {
-    return 0;
+    ;; WIP
+    cell history = get_data().begin_parse().preload_dict();
+    throw_if(400, cell_null?(history));
+    int txs = 0;
+    int fill_step = 0;
+    while (start < end) {
+        (start, slice history_value, int found?) = history.udict_get_nexteq?(48, start);
+        fill_step += 1;
+        if (found?) {
+            txs += history_value~load_uint(64);
+        } else {
+            start = end;
+        }
+        start += 1;
+    }
+    return txs;
 }
