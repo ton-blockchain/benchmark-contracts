@@ -1,12 +1,12 @@
-import { Blockchain, SandboxContract, TreasuryContract, internal, printTransactionFees } from '@ton-community/sandbox';
-import { Cell, toNano } from 'ton-core';
+import { Blockchain, SandboxContract, TreasuryContract, internal, printTransactionFees } from '@ton/sandbox';
+import { Cell, toNano } from '@ton/core';
 import { MasterCounter } from '../wrappers/MasterCounter';
-import { Retranslator, RetranslatorConfig, RetranslatorOptions } from '../wrappers/Retranslator';
-import '@ton-community/test-utils';
-import { compile } from '@ton-community/blueprint';
+import { Retranslator, RetranslatorOptions } from '../wrappers/Retranslator';
+import '@ton/test-utils';
+import { compile } from '@ton/blueprint';
 import { Counter } from '../wrappers/Counter';
-import { KeyPair, getSecureRandomBytes, keyPairFromSeed } from 'ton-crypto';
-import { setMasterCounter, printSpamChain, now } from '../wrappers/utils';
+import { KeyPair, getSecureRandomBytes, keyPairFromSeed } from '@ton/crypto';
+import { setMasterCounter, printSpamChain, printTPSHistory, now } from '../wrappers/utils';
 
 describe('MasterCounter', () => {
     let blockchain: Blockchain;
@@ -124,21 +124,7 @@ describe('MasterCounter', () => {
     });
     it('should show the result', async () => {
         const history = await masterCounter.getHistory();
-        let secTxs: bigint[] = [];
-        console.table(
-            history
-                .keys()
-                .sort()
-                .map((time) => {
-                    const txs = history.get(time);
-                    if (!txs) return undefined;
-                    secTxs.push(txs);
-                    return {
-                        time,
-                        txs,
-                    };
-                })
-        );
+        const secTxs = printTPSHistory(history);
         const counterAmount = await masterCounter.getCounter();
         console.log('Total counter:', counterAmount);
         console.log('Avg TPS:', counterAmount / BigInt(secTxs.length));

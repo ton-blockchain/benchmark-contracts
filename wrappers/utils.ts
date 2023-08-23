@@ -1,8 +1,9 @@
-import { Address, Transaction } from 'ton-core';
+import { Address, Cell, Dictionary, OpenedContract, Transaction } from '@ton/core';
 import { writeFile, mkdir, readFile } from 'fs/promises';
 import path from 'path';
-import { Blockchain } from '@ton-community/sandbox';
-import { getSecureRandomBytes, keyPairFromSecretKey, keyPairFromSeed } from 'ton-crypto';
+import { getSecureRandomBytes, keyPairFromSecretKey, keyPairFromSeed } from '@ton/crypto';
+import { MasterCounter } from './MasterCounter';
+import { NetworkProvider, UIProvider, sleep } from '@ton/blueprint';
 
 export const auto = path.join(__dirname, '..', 'contracts', 'auto');
 
@@ -133,7 +134,26 @@ export async function printSpamChain(transactions: Transaction[], masterCounter?
     );
 }
 
-export async function readCreateKeyPair(filename = "wallet-retranslator.pk") {
+export function printTPSHistory(history: Dictionary<number, bigint>) {
+    let secTxs: bigint[] = [];
+    console.table(
+        history
+            .keys()
+            .sort()
+            .map((time: number) => {
+                const txs = history.get(time);
+                if (!txs) return undefined;
+                secTxs.push(txs);
+                return {
+                    time,
+                    txs,
+                };
+            })
+    );
+    return secTxs;
+}
+
+export async function readCreateKeyPair(filename = 'wallet-retranslator.pk') {
     try {
         const secretKey = await readFile(filename);
         return keyPairFromSecretKey(secretKey);
@@ -144,5 +164,45 @@ export async function readCreateKeyPair(filename = "wallet-retranslator.pk") {
     }
 }
 
-
 export const now = (): number => Math.floor(Date.now() / 1000);
+
+function tpsForLastNSeconds(history: Dictionary<number, bigint>, endTime: number, n = 100) {
+    let sum = 0n;
+    for (let i = 0; i < n; i++) {
+        // going from old to new (doesn't matter really)
+        let txs = history.get(endTime - i);
+        if (!txs) txs = 0n;
+        sum += txs;
+    }
+    return Number(sum) / n;
+}
+
+export async function monitorTPSfromMaster(masterCounter: OpenedContract<MasterCounter>, ui: UIProvider) {
+    let zeroQueue = 0; // if 20 avgs in order are zeroes - stop monitoring
+    while (zeroQueue < 20) {
+        const time = now();
+        try {
+            const history = await masterCounter.getHistory();
+            const avg = tpsForLastNSeconds(history, time - 10); // last second is not avaiable(
+            if (avg == 0) zeroQueue++;
+            else zeroQueue = 0;
+            ui.setActionPrompt('Running: ' + avg + ' TPS');
+        } catch {
+            zeroQueue++;
+            ui.setActionPrompt('Running: N/A TPS');
+        }
+        await sleep(2000);
+    }
+    ui.clearActionPrompt();
+}
+
+
+export async function parseIDFromData(provider: NetworkProvider, address: Address) {
+    const { last } = await provider.api().getLastBlock();
+    const { account } = await provider.api().getAccount(last.seqno, address);
+    if (account.state.type !== 'active') throw new Error("Given account isn't active.");
+    const id = Cell.fromBase64(account.state.data || '')
+        .beginParse()
+        .loadUint(16);
+    return id;
+}

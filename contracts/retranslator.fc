@@ -7,13 +7,12 @@
 -}
 
 const monkey_mode = 0;
-const max_retranslators = 1024;
-const max_counters = 4;
-const hops_per_report = 8;
+const max_retranslators = 512;
+const max_counters = 24;
 const preference_base = 65535;
 ;; This amount should be enough for counter to init
 ;; and send a report to master:
-const report_amount = 60000000; ;; 0.06 TON
+const report_amount = 80000000; ;; 0.08 TON
 
 
 (int, int, int, cell, cell) load_data() inline {
@@ -65,7 +64,7 @@ global int counter_addr_hash;
   int next_hop = id; ;; send to itself by default
   randomize_lt();
 
-  var need_report? = remaining_hops % hops_per_report == 0;
+  var need_report? = remaining_hops % txs_per_report == 0;
   var any_shard_hop? = amount | ((random() % preference_base) >= preference);
 
   max_shard_depth = max_split_from_config();

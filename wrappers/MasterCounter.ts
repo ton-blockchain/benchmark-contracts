@@ -10,7 +10,7 @@ import {
     SendMode,
     toNano,
     TupleBuilder,
-} from 'ton-core';
+} from '@ton/core';
 
 export type MasterCounterConfig = {
     initializer: Address;

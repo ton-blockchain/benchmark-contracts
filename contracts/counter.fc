@@ -16,7 +16,7 @@
 -}
 
 const min_balance = 5000000; ;; 0.005 TON
-const count_report_as_tx = -1;
+const count_report_as_tx = -1; ;; true
 
 ;; id, public_key, counter, last_sync
 (int, int, int, int, cell) load_data () inline {

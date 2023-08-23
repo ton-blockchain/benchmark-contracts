@@ -1,10 +1,8 @@
-import { Blockchain, SandboxContract } from '@ton-community/sandbox';
-import { Cell, toNano } from 'ton-core';
-import { Retranslator } from '../wrappers/Retranslator';
+import { Blockchain, SandboxContract } from '@ton/sandbox';
+import { Cell, toNano } from '@ton/core';
 import { Counter } from '../wrappers/Counter';
-import { MasterCounter } from '../wrappers/MasterCounter';
 import '@ton-community/test-utils';
-import { compile } from '@ton-community/blueprint';
+import { compile } from '@ton/blueprint';
 
 describe('Counter', () => {
     let retranslatorCode: Cell;

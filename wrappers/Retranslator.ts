@@ -8,8 +8,8 @@ import {
     Sender,
     SendMode,
     toNano,
-} from 'ton-core';
-import { KeyPair, sign } from 'ton-crypto';
+} from '@ton/core';
+import { KeyPair, sign } from '@ton/crypto';
 
 const PREFERENCE_BASE = 65535;
 const fl = Math.floor;
@@ -68,12 +68,12 @@ export class Retranslator implements Contract {
     async signAndSendExternal(provider: ContractProvider, msg: Cell) {
         const hash = msg.hash();
         const signature = sign(hash, this.config.keypair.secretKey);
-        await provider.external(
-            beginCell()
-                .storeBuffer(signature, 64) // 512 bits signature
-                .storeSlice(msg.asSlice()) // the rest - message
-                .endCell()
-        );
+        const query = beginCell()
+            .storeBuffer(signature, 64) // 512 bits signature
+            .storeSlice(msg.asSlice()) // the rest - message
+            .endCell();
+        console.log(query.toBoc().toString('hex'))
+        await provider.external(query);
     }
 
     async sendStart(provider: ContractProvider, opts: RetranslatorOptions = {}, now?: number) {
