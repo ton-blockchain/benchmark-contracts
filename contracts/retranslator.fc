@@ -8,11 +8,11 @@
 
 const monkey_mode = 0;
 const max_retranslators = 512;
-const max_counters = 24;
+const max_counters = 12;
 const preference_base = 65535;
 ;; This amount should be enough for counter to init
 ;; and send a report to master:
-const report_amount = 80000000; ;; 0.08 TON
+const report_amount = 90000000; ;; 0.09 TON
 
 
 (int, int, int, cell, cell) load_data() inline {
@@ -41,14 +41,26 @@ global cell counter_initstate;
 global int counter_addr_hash;
 
 () send_report(int any_shard?) impure inline {
+  ;; This exceeds the gas limit:
   int found? = false;
+  int counter_id = random() % max_counters;
+  int first_checked_counter = counter_id; ;; to prevent infinite loop
+
   do {
-    int counter_id = random() % max_counters;
     counter_initstate = counter_init(counter_id, public_key, counter_code);
     counter_addr_hash = cell_hash(counter_initstate);
     int counter_shard = counter_addr_hash >> (256 - max_shard_depth);
     found? = any_shard? ? true : (counter_shard == my_shard);
-  } until found?;
+    counter_id += 1;
+    if (counter_id >= max_counters) {
+      counter_id = 0;
+    }
+  } until (found? | (counter_id == first_checked_counter)); ;; don't loop it
+
+  int counter_id = random() % max_counters;
+  counter_initstate = counter_init(counter_id, public_key, counter_code);
+  counter_addr_hash = cell_hash(counter_initstate);
+
   var report_msg = begin_cell()
     .store_uint(0x10, 6)
     .store_uint(0x400, 11) ;; address serialization and wc
@@ -61,7 +73,6 @@ global int counter_addr_hash;
 }
 
 () retranslate(int amount) impure {
-  int next_hop = id; ;; send to itself by default
   randomize_lt();
 
   var need_report? = remaining_hops % txs_per_report == 0;
@@ -73,20 +84,22 @@ global int counter_addr_hash;
   my_shard = my_addr_hash >> (256 - max_shard_depth);
 
   int found? = false;
+  int next_hop = random() % max_retranslators;
   do {
     ;; if any shard hop - then just select the random hop
     ;; if the same needed - then check random retranslators until found
-    next_hop = random() % max_retranslators;
     next_hop_initstate = retranslator_init(next_hop, public_key, own_code, counter_code);
     next_hop_address = calc_address(next_hop_initstate);
     (_, int hop_addr_hash) = parse_std_addr(my_address());
     int next_hop_shard = hop_addr_hash >> (256 - max_shard_depth);
     found? = any_shard_hop? ? true : (next_hop_shard == my_shard);
+    next_hop += 1;
+    if (next_hop >= max_retranslators) {
+      next_hop = 0;
+    }
   } until found?;
 
   if (need_report?) {
-    ;; ~strdump("reporting");
-    ;; ~dump(id);
     send_report(any_shard_hop?);
     if (amount > 0) {
       amount -= report_amount;
@@ -155,15 +168,12 @@ global int counter_addr_hash;
   payload = in_msg_body; ;; to send with hop. giving an option to set msg size
 
   if(split_hops) {
-    ;; ~strdump("splitting");
-    ;; ~dump(split_hops);
     split_hops -= 1;
 
     msg_value -= 27372000; ;; gas + fwd, it will not make division by 2 perfect, but good enough
     retranslate(msg_value / 2);
     retranslate(0); ;; send the rest
   } else {
-    ;; ~strdump("not splitting");
     retranslate(0); ;; send all incoming value
   }
 }

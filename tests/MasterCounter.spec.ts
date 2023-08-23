@@ -20,7 +20,7 @@ describe('MasterCounter', () => {
         hops: 2000,
         threads: 1,
         splitHops: 0,
-        sameShardProbability: 0,
+        sameShardProbability: 1,
     };
     let counterCode: Cell;
 
@@ -66,7 +66,7 @@ describe('MasterCounter', () => {
     });
 
     it('should deploy first retranslator and start flooding', async () => {
-        // await blockchain.setVerbosityForAddress(masterCounter.address, { vmLogs: 'vm_logs' });
+        await blockchain.setVerbosityForAddress(masterCounter.address, { vmLogs: 'vm_logs' });
         await deployer.send({
             to: retranslator0.address, // topup
             value: toNano('100000'),
