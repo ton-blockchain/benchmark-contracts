@@ -27,7 +27,6 @@ export async function run(provider: NetworkProvider) {
 
     const keypair = await readCreateKeyPair();
 
-    // const masterCounterCode = Cell.fromBoc((await compile('MasterCounter')).toBoc())[0];
     const masterCounterCode = await compile('MasterCounter');
 
     const masterCounter = provider.open(
@@ -40,8 +39,6 @@ export async function run(provider: NetworkProvider) {
 
     setMasterCounter(masterCounter.address);
 
-    // const retranslatorCode = Cell.fromBoc((await compile('Retranslator')).toBoc())[0];
-    // const counterCode = Cell.fromBoc((await compile('Counter')).toBoc())[0];
     const retranslatorCode = await compile('Retranslator');
     const counterCode = await compile('Counter');
 

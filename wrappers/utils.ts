@@ -4,6 +4,7 @@ import path from 'path';
 import { getSecureRandomBytes, keyPairFromSecretKey, keyPairFromSeed } from '@ton/crypto';
 import { MasterCounter } from './MasterCounter';
 import { NetworkProvider, UIProvider, sleep } from '@ton/blueprint';
+import { TonClient4 } from '@ton/ton';
 
 export const auto = path.join(__dirname, '..', 'contracts', 'auto');
 
@@ -196,13 +197,20 @@ export async function monitorTPSfromMaster(masterCounter: OpenedContract<MasterC
     ui.clearActionPrompt();
 }
 
-
 export async function parseIDFromData(provider: NetworkProvider, address: Address) {
-    const { last } = await provider.api().getLastBlock();
-    const { account } = await provider.api().getAccount(last.seqno, address);
-    if (account.state.type !== 'active') throw new Error("Given account isn't active.");
-    const id = Cell.fromBase64(account.state.data || '')
-        .beginParse()
-        .loadUint(16);
-    return id;
+    const api = provider.api();
+    if (api instanceof TonClient4) {
+        const { last } = await api.getLastBlock();
+        const { account } = await api.getAccount(last.seqno, address);
+        if (account.state.type !== 'active') throw new Error("Given account isn't active.");
+        const id = Cell.fromBase64(account.state.data || '')
+            .beginParse()
+            .loadUint(16);
+        return id;
+    } else {
+        const account = await api.getContractState(address);
+        if (account.state !== 'active' || !!!account.data) throw new Error("Given account isn't active.");
+        const id = Cell.fromBoc(account.data)[0].beginParse().loadUint(16);
+        return id;
+    }
 }
