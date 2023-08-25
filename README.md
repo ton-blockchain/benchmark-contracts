@@ -1,4 +1,4 @@
-# benchmark-monitor
+# Benchmark Contracts with monitoring
 
 ## Project structure
 

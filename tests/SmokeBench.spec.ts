@@ -1,4 +1,4 @@
-import { Blockchain, SandboxContract, TreasuryContract, internal, printTransactionFees } from '@ton/sandbox';
+import { Blockchain, SandboxContract, TreasuryContract, internal } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
 import { MasterCounter } from '../wrappers/MasterCounter';
 import { Retranslator, RetranslatorOptions } from '../wrappers/Retranslator';
@@ -102,7 +102,6 @@ describe('MasterCounter', () => {
     it('should report to master from 100th counter', async () => {
         const counterAmountB = await masterCounter.getCounter();
         console.log("counter before 100th's 20:", counterAmountB);
-        // await blockchain.setVerbosityForAddress(masterCounter.address, { vmLogs: 'vm_logs' });
         const masterContract = await blockchain.getContract(masterCounter.address);
         const counter100 = blockchain.openContract(
             Counter.createFromConfig({ id: 100, publicKey: keypair.publicKey }, counterCode)
