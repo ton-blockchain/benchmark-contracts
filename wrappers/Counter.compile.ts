@@ -1,4 +1,4 @@
-import { compile as compileFunc, CompilerConfig } from '@ton/blueprint';
+import { compile as compileFunc, CompilerConfig } from '@ton-community/blueprint';
 import { auto } from './utils';
 import path from 'path';
 import fs from 'fs';

@@ -1,6 +1,6 @@
-import { Address } from '@ton/core';
+import { Address } from 'ton-core';
 import { MasterCounter } from '../wrappers/MasterCounter';
-import { NetworkProvider } from '@ton/blueprint';
+import { NetworkProvider } from '@ton-community/blueprint';
 import { monitorTPSfromMaster } from '../wrappers/utils';
 
 export async function run(provider: NetworkProvider, args: string[]) {

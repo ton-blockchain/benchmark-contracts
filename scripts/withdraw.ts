@@ -1,5 +1,5 @@
-import { Address, Cell, SendMode, beginCell } from '@ton/core';
-import { NetworkProvider } from '@ton/blueprint';
+import { Address, Cell, SendMode, beginCell } from 'ton-core';
+import { NetworkProvider } from '@ton-community/blueprint';
 import { parseIDFromData, readCreateKeyPair } from '../wrappers/utils';
 import { Retranslator } from '../wrappers/Retranslator';
 
@@ -13,7 +13,7 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     const id = await parseIDFromData(provider, address);
     const contract = provider.open(
-        Retranslator.createFromAddress(address, { keypair: keypair, id, counterCode: Cell.EMPTY })
+        Retranslator.createFromAddress(address, { keypair: keypair, id, counterCode: Cell.EMPTY }),
     );
 
     await contract.sendMsgAsWallet(
@@ -25,6 +25,6 @@ export async function run(provider: NetworkProvider, args: string[]) {
             .storeUint(0xd53276db, 32) // excesses
             .storeUint(0, 64)
             .endCell(),
-        SendMode.CARRY_ALL_REMAINING_BALANCE
+        SendMode.CARRY_ALL_REMAINING_BALANCE,
     );
 }

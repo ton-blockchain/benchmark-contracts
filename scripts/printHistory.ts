@@ -1,6 +1,6 @@
-import { Address, toNano } from '@ton/core';
+import { Address, toNano } from 'ton-core';
 import { MasterCounter } from '../wrappers/MasterCounter';
-import { NetworkProvider, sleep } from '@ton/blueprint';
+import { NetworkProvider, sleep } from '@ton-community/blueprint';
 import { printTPSHistory } from '../wrappers/utils';
 
 export async function run(provider: NetworkProvider, args: string[]) {

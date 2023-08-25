@@ -1,6 +1,6 @@
-import { Address, Cell, Dictionary, fromNano, toNano } from '@ton/core';
+import { Address, Cell, fromNano, toNano } from 'ton-core';
 import { MasterCounter } from '../wrappers/MasterCounter';
-import { compile, NetworkProvider, sleep } from '@ton/blueprint';
+import { compile, NetworkProvider, sleep } from '@ton-community/blueprint';
 import { monitorTPSfromMaster, now, readCreateKeyPair, setMasterCounter } from '../wrappers/utils';
 import { Retranslator, RetranslatorOptions } from '../wrappers/Retranslator';
 
@@ -14,10 +14,18 @@ const spamConfig: RetranslatorOptions = {
 
 const masterCounterBalance = toNano('100');
 
+function repackAddress(addr: any): Address {
+    return Address.parse(addr.toString());
+}
+
+function repackCell(cell: any): Cell {
+    return Cell.fromBoc(cell.toBoc())[0];
+}
+
 export async function run(provider: NetworkProvider) {
     const sender = provider.sender();
     const ui = provider.ui();
-    const deployerAddr = sender.address!;
+    const deployerAddr = repackAddress(sender.address);
 
     await ui.input(
         "You'll need about " +
@@ -27,23 +35,24 @@ export async function run(provider: NetworkProvider) {
 
     const keypair = await readCreateKeyPair();
 
-    // const masterCounterCode = Cell.fromBoc((await compile('MasterCounter')).toBoc())[0];
-    const masterCounterCode = await compile('MasterCounter');
+    const masterCounterCode = repackCell(await compile('MasterCounter'));
+    // const masterCounterCode = await compile('MasterCounter');
 
-    const masterCounter = provider.open(
+    const _masterCounter = 
         MasterCounter.createFromConfig(
             { initializer: deployerAddr, publicKey: keypair.publicKey },
             masterCounterCode,
             -1 // workchain = masterchain
         )
-    );
+    _masterCounter.address = repackAddress(_masterCounter.address);
+    const masterCounter = provider.open(_masterCounter);
 
     setMasterCounter(masterCounter.address);
 
-    // const retranslatorCode = Cell.fromBoc((await compile('Retranslator')).toBoc())[0];
-    // const counterCode = Cell.fromBoc((await compile('Counter')).toBoc())[0];
-    const retranslatorCode = await compile('Retranslator');
-    const counterCode = await compile('Counter');
+    const retranslatorCode = repackCell(await compile('Retranslator'));
+    const counterCode = repackCell(await compile('Counter'));
+    // const retranslatorCode = await compile('Retranslator');
+    // const counterCode = await compile('Counter');
 
     const retranslator0 = provider.open(
         Retranslator.createFromConfig({ id: 0, keypair, counterCode }, retranslatorCode)

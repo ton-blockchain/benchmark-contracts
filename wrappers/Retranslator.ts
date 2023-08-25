@@ -8,8 +8,8 @@ import {
     Sender,
     SendMode,
     toNano,
-} from '@ton/core';
-import { KeyPair, sign } from '@ton/crypto';
+} from 'ton-core';
+import { KeyPair, sign } from 'ton-crypto';
 
 const PREFERENCE_BASE = 65535;
 const fl = Math.floor;

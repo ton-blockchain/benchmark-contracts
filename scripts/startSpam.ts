@@ -1,5 +1,5 @@
-import { Address, Cell, fromNano, toNano } from '@ton/core';
-import { NetworkProvider } from '@ton/blueprint';
+import { Address, Cell, fromNano, toNano } from 'ton-core';
+import { NetworkProvider } from '@ton-community/blueprint';
 import { parseIDFromData, readCreateKeyPair } from '../wrappers/utils';
 import { Retranslator, RetranslatorOptions } from '../wrappers/Retranslator';
 
@@ -24,7 +24,7 @@ export async function run(provider: NetworkProvider, args: string[]) {
             keypair: keypair,
             id: retranslatorID,
             counterCode: Cell.EMPTY,
-        })
+        }),
     );
 
     ui.write(
@@ -32,7 +32,7 @@ export async function run(provider: NetworkProvider, args: string[]) {
             retranslator.address.toString({ bounceable: false }) +
             ' with ' +
             fromNano((spamConfig.amount || toNano(20000)) + toNano(1)) +
-            ' TON'
+            ' TON',
     );
     await ui.input('Press Enter to start the spam...');
 

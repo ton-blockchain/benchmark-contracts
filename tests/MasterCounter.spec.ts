@@ -1,11 +1,11 @@
-import { Blockchain, SandboxContract, TreasuryContract, internal, printTransactionFees } from '@ton/sandbox';
-import { Cell, toNano } from '@ton/core';
+import { Blockchain, SandboxContract, TreasuryContract, internal, printTransactionFees } from '@ton-community/sandbox';
+import { Cell, toNano } from 'ton-core';
 import { MasterCounter } from '../wrappers/MasterCounter';
 import { Retranslator, RetranslatorOptions } from '../wrappers/Retranslator';
 import '@ton/test-utils';
-import { compile } from '@ton/blueprint';
+import { compile } from '@ton-community/blueprint';
 import { Counter } from '../wrappers/Counter';
-import { KeyPair, getSecureRandomBytes, keyPairFromSeed } from '@ton/crypto';
+import { KeyPair, getSecureRandomBytes, keyPairFromSeed } from 'ton-crypto';
 import { setMasterCounter, printSpamChain, printTPSHistory, now } from '../wrappers/utils';
 
 describe('MasterCounter', () => {
@@ -35,8 +35,8 @@ describe('MasterCounter', () => {
             MasterCounter.createFromConfig(
                 { initializer: deployer.address, publicKey: keypair.publicKey },
                 masterCounterCode,
-                -1 // workchain = masterchain
-            )
+                -1, // workchain = masterchain
+            ),
         );
         setMasterCounter(masterCounter.address);
 
@@ -44,11 +44,11 @@ describe('MasterCounter', () => {
         counterCode = await compile('Counter');
 
         retranslator0 = blockchain.openContract(
-            Retranslator.createFromConfig({ id: 0, keypair, counterCode }, retranslatorCode)
+            Retranslator.createFromConfig({ id: 0, keypair, counterCode }, retranslatorCode),
         );
 
         counter0 = blockchain.openContract(
-            Counter.createFromConfig({ id: 0, publicKey: keypair.publicKey }, counterCode)
+            Counter.createFromConfig({ id: 0, publicKey: keypair.publicKey }, counterCode),
         );
 
         const deployMasterResult = await masterCounter.sendDeploy(deployer.getSender(), counterCode, toNano('1000'));
@@ -94,7 +94,7 @@ describe('MasterCounter', () => {
                 to: masterCounter.address,
                 value: toNano('0.4'),
                 body: MasterCounter.addMessageBody(0, 10, t, t + 10),
-            })
+            }),
         );
         const counterAmountA = await masterCounter.getCounter();
         console.log("counter after 0th's 10:", counterAmountA);
@@ -105,7 +105,7 @@ describe('MasterCounter', () => {
         // await blockchain.setVerbosityForAddress(masterCounter.address, { vmLogs: 'vm_logs' });
         const masterContract = await blockchain.getContract(masterCounter.address);
         const counter100 = blockchain.openContract(
-            Counter.createFromConfig({ id: 100, publicKey: keypair.publicKey }, counterCode)
+            Counter.createFromConfig({ id: 100, publicKey: keypair.publicKey }, counterCode),
         );
         masterContract.receiveMessage(
             internal({
@@ -113,7 +113,7 @@ describe('MasterCounter', () => {
                 to: masterCounter.address,
                 value: toNano('2'),
                 body: MasterCounter.addMessageBody(100, 20, t, t + 20),
-            })
+            }),
         );
         const counterAmountA = await masterCounter.getCounter();
         console.log("counter after 100th's 20:", counterAmountA);

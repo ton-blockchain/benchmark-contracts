@@ -1,9 +1,9 @@
-import { Address, Cell, Dictionary, OpenedContract, Transaction } from '@ton/core';
+import { Address, Cell, Dictionary, OpenedContract, Transaction } from 'ton-core';
 import { writeFile, mkdir, readFile } from 'fs/promises';
 import path from 'path';
-import { getSecureRandomBytes, keyPairFromSecretKey, keyPairFromSeed } from '@ton/crypto';
+import { getSecureRandomBytes, keyPairFromSecretKey, keyPairFromSeed } from 'ton-crypto';
 import { MasterCounter } from './MasterCounter';
-import { NetworkProvider, UIProvider, sleep } from '@ton/blueprint';
+import { NetworkProvider, UIProvider, sleep } from '@ton-community/blueprint';
 
 export const auto = path.join(__dirname, '..', 'contracts', 'auto');
 
@@ -11,7 +11,7 @@ export async function setMasterCounter(masterCounter: Address) {
     await mkdir(auto, { recursive: true });
     await writeFile(
         path.join(auto, `master-counter-address.fc`),
-        `const slice master_counter_address = "${masterCounter.toString()}"a;`
+        `const slice master_counter_address = "${masterCounter.toString()}"a;`,
     );
 }
 
@@ -93,7 +93,7 @@ export async function printSpamChain(transactions: Transaction[], masterCounter?
                 }
 
                 const valueIn = formatCoins(
-                    tx.inMessage?.info.type === 'internal' ? tx.inMessage.info.value.coins : undefined
+                    tx.inMessage?.info.type === 'internal' ? tx.inMessage.info.value.coins : undefined,
                 );
 
                 const valueOut = formatCoins(
@@ -102,12 +102,12 @@ export async function printSpamChain(transactions: Transaction[], masterCounter?
                         .reduce(
                             (total, message) =>
                                 total + (message.info.type === 'internal' ? message.info.value.coins : 0n),
-                            0n
-                        )
+                            0n,
+                        ),
                 );
 
                 const computeFees = formatCoins(
-                    tx.description.computePhase.type === 'vm' ? tx.description.computePhase.gasFees : undefined
+                    tx.description.computePhase.type === 'vm' ? tx.description.computePhase.gasFees : undefined,
                 );
 
                 const exitCode =
@@ -130,7 +130,7 @@ export async function printSpamChain(transactions: Transaction[], masterCounter?
                     actionCode: tx.description.actionPhase?.resultCode ?? 'N/A',
                 };
             })
-            .filter((v) => v !== undefined)
+            .filter((v) => v !== undefined),
     );
 }
 
@@ -148,7 +148,7 @@ export function printTPSHistory(history: Dictionary<number, bigint>) {
                     time,
                     txs,
                 };
-            })
+            }),
     );
     return secTxs;
 }
@@ -196,13 +196,12 @@ export async function monitorTPSfromMaster(masterCounter: OpenedContract<MasterC
     ui.clearActionPrompt();
 }
 
-
-export async function parseIDFromData(provider: NetworkProvider, address: Address) {
-    const { last } = await provider.api().getLastBlock();
-    const { account } = await provider.api().getAccount(last.seqno, address);
-    if (account.state.type !== 'active') throw new Error("Given account isn't active.");
-    const id = Cell.fromBase64(account.state.data || '')
-        .beginParse()
-        .loadUint(16);
-    return id;
-}
+// export async function parseIDFromData(provider: NetworkProvider, address: Address) {
+//     const { last } = await provider.api().getLastBlock();
+//     const { account } = await provider.api().getAccount(last.seqno, address);
+//     if (account.state.type !== 'active') throw new Error("Given account isn't active.");
+//     const id = Cell.fromBase64(account.state.data || '')
+//         .beginParse()
+//         .loadUint(16);
+//     return id;
+// }
