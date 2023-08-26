@@ -2,10 +2,6 @@
 ;; reports from basic counter to master:
 const master_report_timestep = 2;
 
-;; How much txs to add when receiving
-;; a report from retranslator:
-const txs_per_report = 8;
-
 ;; Basic wc for counters and retranslators:
 const workchain = 0;
 

@@ -18,7 +18,8 @@
 const monkey_mode = 0;
 const max_retranslators = 512;
 const max_counters = 12;
-const preference_base = 65535;
+
+const chance_base = 65535;
 ;; This amount should be enough for counter to init
 ;; and send a report to master:
 const report_amount = 90000000; ;; 0.09 TON
@@ -32,10 +33,11 @@ const report_amount = 90000000; ;; 0.09 TON
 }
 
 ;; arguments for retranslate()
-global int preference;
+global int same_shard_chance;
 global int remaining_hops;
 global int split_hops;
 global int id;
+global int txs_per_report;
 global int public_key;
 global cell own_code;
 global cell counter_code;
@@ -77,7 +79,8 @@ global int counter_addr_hash;
     .store_coins(report_amount)
     .store_uint(4 + 2, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1) ;; stateinit presents | body in slice
     .store_ref(counter_initstate)
-    .store_uint(id, 16);
+    .store_uint(id, 16)
+    .store_uint(txs_per_report, 16);
   send_raw_message(report_msg.end_cell(), 3);
 }
 
@@ -85,7 +88,7 @@ global int counter_addr_hash;
   randomize_lt();
 
   var need_report? = remaining_hops % txs_per_report == 0;
-  var any_shard_hop? = amount | ((random() % preference_base) >= preference);
+  var any_shard_hop? = amount | ((random() % chance_base) >= same_shard_chance);
 
   max_shard_depth = max_split_from_config();
   (_, int my_addr_hash) = parse_std_addr(my_address());
@@ -124,7 +127,8 @@ global int counter_addr_hash;
     .store_uint(id, 16)
     .store_uint(remaining_hops, 16)
     .store_uint(split_hops, 8)
-    .store_uint(preference, 16)
+    .store_uint(txs_per_report, 16)
+    .store_uint(same_shard_chance, 16)
     .store_slice(payload)
     .end_cell();
   hop_msg = hop_msg.store_ref(hop_msg_body);
@@ -136,7 +140,7 @@ global int counter_addr_hash;
 }
 
 {-
-  retransalate#_ id:uint16 remaining_hops:uint16 split_hops:uint8 preference:uint16 payload:Cell = IntMsgBody;
+  retransalate#_ id:uint16 remaining_hops:uint16 split_hops:uint8 txs_per_report:uint16 same_shard_chance:uint16 payload:Cell = IntMsgBody;
 -}
 
 () main(int msg_value, cell in_msg_full, slice in_msg_body) {
@@ -162,7 +166,8 @@ global int counter_addr_hash;
 
   remaining_hops = in_msg_body~load_uint(16);
   split_hops = in_msg_body~load_uint(8);
-  preference = in_msg_body~load_uint(16);
+  txs_per_report = in_msg_body~load_uint(16);
+  same_shard_chance = in_msg_body~load_uint(16);
 
   ifnot(remaining_hops) {
     return ();
@@ -204,12 +209,14 @@ global int counter_addr_hash;
       (int threads, ;; a number of tx-chains to start
        remaining_hops,
        split_hops,
-       int amount,
-       preference) = (cs~load_uint(8),
-                          cs~load_uint(16),
-                          cs~load_uint(8),
-                          cs~load_coins(),
-                          cs~load_uint(16));
+       txs_per_report,
+       same_shard_chance,
+       int amount) = (cs~load_uint(8),
+                      cs~load_uint(16),
+                      cs~load_uint(8),
+                      cs~load_uint(16),
+                      cs~load_uint(16),
+                      cs~load_coins());
       payload = cs;
       while (threads > 0) {
         retranslate(amount);

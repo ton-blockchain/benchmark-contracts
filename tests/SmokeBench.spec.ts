@@ -16,11 +16,11 @@ describe('MasterCounter', () => {
     let counter0: SandboxContract<Counter>;
     let deployer: SandboxContract<TreasuryContract>;
     let spamConfig: RetranslatorOptions = {
-        amount: toNano(50),
-        hops: 1000,
+        amount: toNano(200),
+        hops: 10000,
         threads: 1,
         splitHops: 0,
-        sameShardProbability: 1,
+        sameShardProbability: 0.5,
     };
     let counterCode: Cell;
 

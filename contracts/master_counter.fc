@@ -75,6 +75,7 @@ const history_step = 5;
     int timedelta = to_time - from_time;
 
     int steps = timedelta / history_step;
+    steps = max(steps, 1); ;; prevent division by 0
     var (per_step, reminder) = divmod(to_add, steps);
 
     int time = from_time;

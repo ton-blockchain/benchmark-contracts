@@ -23,7 +23,6 @@ transactions.
 -   [Counter](contracts/counter.fc)
 -   [Master Counter](contracts/counter.fc)
 
-
 ## Usage
 
 > ⚠️ Currently, to run in _ownnet_ (MyLocalTon) or in _Perfnet_, use
@@ -70,7 +69,6 @@ This will deploy everything, run a test spam and print a nice table of
 resulting transactions. You can play with settings in
 [SmokeBench.spec.ts](tests/SmokeBench.spec.ts#L18-L24).
 
-
 ## Configuration
 
 Here are the parameters you may change for benchmarking:
@@ -81,20 +79,22 @@ Here are the parameters you may change for benchmarking:
     retranslator.fc](contracts/retranslator.fc#L19) - the maximum number
     of retranslator id. Roughly, how much retranslators to use.
 -   `max_counters` [in retranslator.fc](contracts/retranslator.fc#L20)
-    - the maximum number of counter. id. Making it large will sometimes
-      decrease the frequency of reports to the master counter.
+    -   the maximum number of counter. id. Making it large will sometimes
+        decrease the frequency of reports to the master counter.
 -   `monkey_mode` [in retranslator.fc](contracts/retranslator.fc#L18) - if
     set to -1 (true), the system will switch to the mode when the
     retranslator self-destructs after the hop. This is designed to reduce
     the state change in the block (the contract will be uninit-\>uninit,
     instead of uninit-\>init), reduce the cost and increase TPS.
--   `txs_per_report` [in utils.fc](contracts/imports/utils.fc#L7) - how
-    much txs a counter will add when receiving a report from retranslator.
 -   `master_report_timestep` [in utils.fc](contracts/imports/utils.fc#L3)
-    - the time required to pass for a Counter to report again to master.
+    -   the time required to pass for a Counter to report again to master.
 -   `count_report_as_tx` [in counter.fc](contracts/counter.fc#L18) - if
     set to -1 (true), counter will count the message from the retranslator
     as hop.
+-   `history_step` [in
+    master\_counter.fc](contracts/master_counter.fc#L13) \- the
+    discreteness with which transactions will be written in the history
+    dictionary.
 
 ##### On start, in external:
 
@@ -114,10 +114,11 @@ and _tests_, see [startSpam.ts](scripts/startSpam.ts#L6-L12),
     turned out after the previous splits will be once again divided into
     two. So the number of threads is `2 ^ splitHops`. For example,
     2 `splitHops` will give 4 threads, 3 will give 8, 4 will give 16, etc.
+-   `txs_per_report` - frequency of reports, or how rarely retranslator
+    will report to counter.
 -   `sameShardProbability` - the chance that when the retranslator is
     called, the next hop will be in its shard. It is used to regulate the
     load between shards or for tests of a single shard.
 -   `extraDataSizeBytesOrRef` - you can add extra data for every hop
     message. For this, set it ot a number of bytes to add, or to
     a reference cell, which will be added to the message.
-

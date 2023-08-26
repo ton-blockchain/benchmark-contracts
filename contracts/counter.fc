@@ -42,7 +42,7 @@ const min_balance = 5000000; ;; 0.005 TON
 }
 
 {-
-  report#_ reporter_id:uint16 = IntMsgBody;
+  report#_ reporter_id:uint16 to_add:uint16 = IntMsgBody;
 -}
 () main(cell in_msg_full, slice in_msg_body) impure {
     slice cs = in_msg_full.begin_parse();
@@ -60,7 +60,8 @@ const min_balance = 5000000; ;; 0.005 TON
     slice expected_address = calc_address(retranslator_init(sender_id, public_key, retranslator_code(), own_code));
     throw_unless(401, equal_slice_bits(expected_address, sender_address));
 
-    counter += txs_per_report - count_report_as_tx; ;; if true - adding one (-(-1)), if false - nothing
+    int to_add = in_msg_body~load_uint(16);
+    counter += to_add - count_report_as_tx; ;; if true - adding one (-(-1)), if false - nothing
 
     if (last_sync + master_report_timestep <= now()) {
         push_to_master(master_counter_address, my_id, counter, last_sync);

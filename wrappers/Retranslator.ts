@@ -1,17 +1,7 @@
-import {
-    Address,
-    beginCell,
-    Cell,
-    Contract,
-    contractAddress,
-    ContractProvider,
-    Sender,
-    SendMode,
-    toNano,
-} from '@ton/core';
+import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, SendMode, toNano } from '@ton/core';
 import { KeyPair, sign } from '@ton/crypto';
 
-const PREFERENCE_BASE = 65535;
+const CHANCE_BASE = 65535;
 const fl = Math.floor;
 
 export type RetranslatorConfig = {
@@ -21,12 +11,13 @@ export type RetranslatorConfig = {
 };
 
 export type RetranslatorOptions = {
-    threads?: number;
-    hops?: number;
-    splitHops?: number;
-    amount?: bigint;
-    sameShardProbability?: number; // `preference` in contract
-    extraDataSizeBytesOrRef?: number | Cell;
+    threads?: number; // 1
+    hops?: number; // 20000
+    splitHops?: number; // 8
+    amount?: bigint; // 99 nTON
+    txsPerReport?: number; // 8
+    sameShardProbability?: number; // 0.5
+    extraDataSizeBytesOrRef?: number | Cell; // none
 };
 
 export function retranslatorConfigToCell(config: RetranslatorConfig, code: Cell): Cell {
@@ -77,13 +68,14 @@ export class Retranslator implements Contract {
             .storeUint(opts.threads == undefined ? 1 : opts.threads, 8)
             .storeUint(opts.hops == undefined ? 20000 : opts.hops, 16)
             .storeUint(opts.splitHops == undefined ? 5 : opts.splitHops, 8)
-            .storeCoins(opts.amount == undefined ? toNano('99') : opts.amount)
+            .storeUint(opts.txsPerReport == undefined ? 8 : opts.txsPerReport, 16)
             .storeUint(
                 opts.sameShardProbability == undefined //
-                    ? fl(0.5 * PREFERENCE_BASE) // 50% by default
-                    : fl(opts.sameShardProbability * PREFERENCE_BASE),
+                    ? fl(0.5 * CHANCE_BASE) // 50% by default
+                    : fl(opts.sameShardProbability * CHANCE_BASE),
                 16
-            );
+            )
+            .storeCoins(opts.amount == undefined ? toNano('99') : opts.amount);
         if (opts.extraDataSizeBytesOrRef instanceof Cell) {
             msg = msg.storeRef(opts.extraDataSizeBytesOrRef);
         } else {
