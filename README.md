@@ -68,7 +68,7 @@ a Retranslator or Master Counter just as from a simple wallet.
 
 This will deploy everything, run a test spam and print a nice table of
 resulting transactions. You can play with settings in
-[SmokeBench.spec.ts]()
+[SmokeBench.spec.ts](tests/SmokeBench.spec.ts#L18-L24).
 
 
 ## Configuration
@@ -77,26 +77,26 @@ Here are the parameters you may change for benchmarking:
 
 ##### In code:
 
--   `max_retranslators` [in retranslator.fc]() - the maximum number of retranslator id. Roughly, how much retranslators to use.
--   `max_counters` [in retranslator.fc]() - the maximum number of counter.
+-   `max_retranslators` [in retranslator.fc](contracts/retranslator.fc#L19) - the maximum number of retranslator id. Roughly, how much retranslators to use.
+-   `max_counters` [in retranslator.fc](contracts/retranslator.fc#L20) - the maximum number of counter.
     id. Making it large will sometimes decrease the frequency of reports to
     the master counter.
--   `monkey_mode` [in retranslator.fc]() - if set to -1 (true), the system
+-   `monkey_mode` [in retranslator.fc](contracts/retranslator.fc#L18) - if set to -1 (true), the system
     will switch to the mode when the retranslator self-destructs after the
     hop. This is designed to reduce the state change in the block (the
     contract will be uninit-\>uninit, instead of uninit-\>unit), reduce the
     cost and increase TPS.
--   `txs_per_report` [in utils.fc]() - how much txs a counter will add when
+-   `txs_per_report` [in utils.fc](contracts/imports/utils.fc#L7) - how much txs a counter will add when
     receiving a report from retranslator.
--   `master_report_timestep` [in utils.fc]() - the time required to pass for
+-   `master_report_timestep` [in utils.fc](contracts/imports/utils.fc#L3) - the time required to pass for
     a Counter to report again to master.
--   `count_report_as_tx` [in utils.fc]() - if set to -1 (true), counter will
+-   `count_report_as_tx` [in counter.fc](contracts/counter.fc#L18) - if set to -1 (true), counter will
     count the message from the retranslator as hop.
 
 ##### On start, in external:
 
 This parameters are different for every run, may be changed in _scripts_
-and _tests_, see [startSpam.ts](), [deployAllAndStart.ts](), [SmokeBench.spec.ts]().
+and _tests_, see [startSpam.ts](scripts/startSpam.ts#L6-L12), [deployAllAndStart.ts](scripts/deployAllAndStart.ts#L7-L13), [SmokeBench.spec.ts](tests/SmokeBench.spec.ts#L18-L24).
 
 -   `amount` - TONs for every thread, consumption: < 50 TON per 1000 hops.
 -   `hops` - the amount of hops.
