@@ -9,6 +9,9 @@
 #include "imports/stdlib.fc";
 #include "imports/utils.fc";
 
+
+const history_step = 5;
+
 {-
     _$0 initializer:MsgAddress counter:uint256 history:(HashmapE 48 uint64) public_key:uint256 = Storage;
     _$1 counter:uint256 history:(HashmapE 48 uint64) public_key:uint256 counter_code:^Cell = Storage;
@@ -68,29 +71,26 @@
     int to_add = in_msg_body~load_uint(32);
     int from_time = in_msg_body~load_uint(48);
     int to_time = in_msg_body~load_uint(48);
-    ;;~strdump("sender_id, to_add, from_time, to_time:");
-    ;;~dump(sender_id);
-    ;;~dump(to_add);
-    ;;~dump(from_time);
-    ;;~dump(to_time);
 
     int timedelta = to_time - from_time;
-    var (per_second, reminder) = divmod(to_add, timedelta);
 
-    int reached_last_second = false;
-    do {
-        int timestep_txs = per_second;
-        (slice history_value, int found?) = history.udict_get?(48, from_time);
+    int steps = timedelta / history_step;
+    var (per_step, reminder) = divmod(to_add, steps);
+
+    int time = from_time;
+    while (steps > 0) {
+        int time_txs = per_step;
+        (slice history_value, int found?) = history.udict_get?(48, time);
         if (found?) {
-            timestep_txs += history_value~load_uint(64);
+            time_txs += history_value~load_uint(64);
         }
-        from_time += 1;
-        reached_last_second = from_time == to_time;
-        if (reached_last_second) {
-            timestep_txs += reminder;
+        steps -= 1;
+        if (steps == 0) {
+            time_txs += reminder;
         }
-        history~udict_set_builder(48, from_time - 1, begin_cell().store_uint(timestep_txs, 64));
-    } until (reached_last_second);
+        history~udict_set_builder(48, time, begin_cell().store_uint(time_txs, 64));
+        time += history_step;
+    }
 
     counter += to_add;
     save_data(counter, history, public_key, counter_code);
