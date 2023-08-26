@@ -1,6 +1,15 @@
+{-
+    This is the Retranslator contract in the network stress test system.
+    It is launched from an external message, very similar in structure
+    to a message to a wallet. Until the started chain ends, it forwards
+    almost identical messages, which are called hops, to its own copies.
+    There are usually several hundred thousand of these messages in one test.
+    Every few hops (see txs_per_report in imports/utils.fc), it (i.e. its copy)
+    sends a report to the Сounter contract (counter.fc).
+-}
+
 #include "imports/stdlib.fc";
 #include "imports/utils.fc";
-
 
 {-
   _# id:uint16 seqno:uint32 public_key:uint256 own_code:^Cell counter_code:^Cell = Storage;

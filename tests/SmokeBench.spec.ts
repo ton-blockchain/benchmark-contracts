@@ -16,8 +16,8 @@ describe('MasterCounter', () => {
     let counter0: SandboxContract<Counter>;
     let deployer: SandboxContract<TreasuryContract>;
     let spamConfig: RetranslatorOptions = {
-        amount: toNano(1300),
-        hops: 2000,
+        amount: toNano(50),
+        hops: 1000,
         threads: 1,
         splitHops: 0,
         sameShardProbability: 1,
@@ -66,7 +66,6 @@ describe('MasterCounter', () => {
     });
 
     it('should deploy first retranslator and start flooding', async () => {
-        await blockchain.setVerbosityForAddress(masterCounter.address, { vmLogs: 'vm_logs' });
         await deployer.send({
             to: retranslator0.address, // topup
             value: toNano('100000'),
@@ -81,7 +80,6 @@ describe('MasterCounter', () => {
         });
 
         printSpamChain(startResult.transactions, masterCounter.address);
-        // printTransactionFees(startResult.transactions)
     });
     const t = now();
     it('should report to master from 0th', async () => {

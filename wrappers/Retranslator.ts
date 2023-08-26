@@ -56,15 +56,6 @@ export class Retranslator implements Contract {
         return new Retranslator(contractAddress(workchain, init), config, init);
     }
 
-    async sendDeploy(provider: ContractProvider, via: Sender, counterStaticData: Cell, value: bigint = toNano('1')) {
-        await provider.internal(via, {
-            value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            bounce: false,
-            body: Cell.EMPTY,
-        });
-    }
-
     async signAndSendExternal(provider: ContractProvider, msg: Cell) {
         const hash = msg.hash();
         const signature = sign(hash, this.config.keypair.secretKey);
@@ -72,7 +63,6 @@ export class Retranslator implements Contract {
             .storeBuffer(signature, 64) // 512 bits signature
             .storeSlice(msg.asSlice()) // the rest - message
             .endCell();
-        console.log(query.toBoc().toString('hex'))
         await provider.external(query);
     }
 

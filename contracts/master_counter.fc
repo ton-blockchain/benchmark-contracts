@@ -1,6 +1,13 @@
+{-
+    This is the Master Counter contract in the network stress test system.
+    It stays in the masterchain, receives sync messages from the middle
+    Counters (counter.fc), which contain transactions amount and where they
+    need to be placed in history. It adds this info to the history dictionary,
+    which anyone can easily access through get methods.
+-}
+
 #include "imports/stdlib.fc";
 #include "imports/utils.fc";
-
 
 {-
     _$0 initializer:MsgAddress counter:uint256 history:(HashmapE 48 uint64) public_key:uint256 = Storage;

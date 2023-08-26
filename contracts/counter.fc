@@ -1,9 +1,9 @@
 {-
     This is the middle Counter contract in the network stress test system.
-    It receives reports from Retranslators in its shard every N transactions
-    they make (this parameter is configured in retranslator.fc).
+    It receives reports from Retranslators every N transactions
+    they (retranslators) make (this parameter is configured in retranslator.fc).
     It counts the reported transactions and once in a while sends them
-    to the Master Counter, which is located in workchain -1.
+    to the Master Counter (master_counter.fc), which is located in workchain -1.
 -}
 
 #include "imports/stdlib.fc";
@@ -15,8 +15,8 @@
   _# id:uint16 public_key:uint256 counter:uint32 last_sync:uint48 own_code:^Cell= Storage;
 -}
 
-const min_balance = 5000000; ;; 0.005 TON
 const count_report_as_tx = -1; ;; true
+const min_balance = 5000000; ;; 0.005 TON
 
 ;; id, public_key, counter, last_sync
 (int, int, int, int, cell) load_data () inline {
