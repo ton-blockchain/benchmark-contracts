@@ -1,18 +1,19 @@
-import { Address, Cell, fromNano, toNano } from '@ton/core';
+import { Address, Cell, SendMode, fromNano, toNano } from '@ton/core';
 import { NetworkProvider } from '@ton/blueprint';
 import { parseIDFromData, readCreateKeyPair } from '../wrappers/utils';
 import { Retranslator, RetranslatorOptions } from '../wrappers/Retranslator';
 
 const spamConfig: RetranslatorOptions = {
-    amount: toNano(1000),
+    amount: toNano(100),
     hops: 40000,
-    threads: 1,
-    splitHops: 1,
-    sameShardProbability: 1,
+    threads: 2,
+    splitHops: 2,
+    sameShardProbability: 0,
 };
 
 export async function run(provider: NetworkProvider, args: string[]) {
     const ui = provider.ui();
+    const sender = provider.sender();
 
     const keypair = await readCreateKeyPair();
 
@@ -27,13 +28,24 @@ export async function run(provider: NetworkProvider, args: string[]) {
         })
     );
 
-    ui.write(
-        'Topup it ' +
-            retranslator.address.toString({ bounceable: false }) +
-            ' with ' +
-            fromNano((spamConfig.amount || toNano(20000)) + toNano(1)) +
-            ' TON'
-    );
+    const topupAmount = (spamConfig.amount || toNano(20000)) * BigInt(spamConfig.threads || 1) + toNano('1');
+    try {
+        ui.write("Trying to topup from connected wallet (won't work with mobile wallets)");
+        await sender.send({
+            to: retranslator.address,
+            value: topupAmount,
+            bounce: false,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+        });
+    } catch {
+        ui.write(
+            'Please, topup the retranslator with ' +
+                fromNano(topupAmount) +
+                ' TON: ' +
+                retranslator.address.toString({ bounceable: false })
+        );
+        await ui.input("Press Enter when you're ready...");
+    }
     await ui.input('Press Enter to start the spam...');
 
     await retranslator.sendStart(spamConfig);

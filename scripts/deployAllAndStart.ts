@@ -1,4 +1,4 @@
-import { Address, Cell, Dictionary, fromNano, toNano } from '@ton/core';
+import { Address, Cell, Dictionary, SendMode, fromNano, toNano } from '@ton/core';
 import { MasterCounter } from '../wrappers/MasterCounter';
 import { compile, NetworkProvider, sleep } from '@ton/blueprint';
 import { monitorTPSfromMaster, now, readCreateKeyPair, setMasterCounter } from '../wrappers/utils';
@@ -7,8 +7,8 @@ import { Retranslator, RetranslatorOptions } from '../wrappers/Retranslator';
 const spamConfig: RetranslatorOptions = {
     amount: toNano(150),
     hops: 10000,
-    threads: 1,
-    splitHops: 8,
+    threads: 2,
+    splitHops: 0,
     sameShardProbability: 0,
 };
 
@@ -21,7 +21,11 @@ export async function run(provider: NetworkProvider) {
 
     await ui.input(
         "You'll need about " +
-            fromNano((spamConfig.amount || toNano(20000)) + masterCounterBalance + toNano(1)) +
+            fromNano(
+                (spamConfig.amount || toNano(20000)) * BigInt(spamConfig.threads || 1) +
+                    masterCounterBalance +
+                    toNano(1)
+            ) +
             ' TON for this action. Press Enter to continue...'
     );
 
@@ -51,16 +55,26 @@ export async function run(provider: NetworkProvider) {
     await provider.waitForDeploy(masterCounter.address, 10);
     ui.write('Deployed master counter: ' + masterCounter.address.toString() + '\n');
 
-    const deployAmount = (spamConfig.amount || toNano(20000)) + toNano('1');
-    ui.write(
-        'Please, topup the first retranslator with ' +
-            fromNano(deployAmount) +
-            ' TON: ' +
-            retranslator0.address.toString({ bounceable: false })
-    );
-    await ui.input("Press Enter when you're ready...");
+    const topupAmount = (spamConfig.amount || toNano(20000)) * BigInt(spamConfig.threads || 1) + toNano('1');
+    try {
+        ui.write('Trying to topup from connected wallet (won\'t work with mobile wallets)');
+        await sender.send({
+            to: retranslator0.address,
+            value: topupAmount,
+            bounce: false,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+        });
+    } catch {
+        ui.write(
+            'Please, topup the first retranslator with ' +
+                fromNano(topupAmount) +
+                ' TON: ' +
+                retranslator0.address.toString({ bounceable: false })
+        );
+        await ui.input("Press Enter when you're ready...");
+    }
 
-    ui.write("We'll hope retranslator now have coins...\n");
+    ui.write("We'll hope retranslator " + retranslator0.address.toString() + ' now have coins...\n');
 
     await ui.input('Press Enter to start the spam...');
 
