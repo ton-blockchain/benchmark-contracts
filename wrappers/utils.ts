@@ -184,7 +184,7 @@ export async function monitorTPSfromMaster(masterCounter: OpenedContract<MasterC
         const time = now();
         try {
             const history = await masterCounter.getHistory();
-            const avg = tpsForLastNSeconds(history, time - 10); // last second is not avaiable(
+            const avg = tpsForLastNSeconds(history, time - 10); // last second are not avaiable(
             if (avg == 0) zeroQueue++;
             else zeroQueue = 0;
             ui.setActionPrompt('Running: ' + avg + ' TPS');
