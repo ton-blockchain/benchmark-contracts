@@ -33,7 +33,7 @@ describe('MasterCounter', () => {
         let masterCounterCode = await compile('MasterCounter');
         masterCounter = blockchain.openContract(
             MasterCounter.createFromConfig(
-                { initializer: deployer.address, publicKey: keypair.publicKey },
+                { owner: deployer.address, publicKey: keypair.publicKey },
                 masterCounterCode,
                 -1 // workchain = masterchain
             )
@@ -51,7 +51,7 @@ describe('MasterCounter', () => {
             Counter.createFromConfig({ id: 0, publicKey: keypair.publicKey }, counterCode)
         );
 
-        const deployMasterResult = await masterCounter.sendDeploy(deployer.getSender(), counterCode, toNano('1000'));
+        const deployMasterResult = await masterCounter.sendCounterCode(deployer.getSender(), counterCode, toNano('1000'));
 
         expect(deployMasterResult.transactions).toHaveTransaction({
             from: deployer.address,

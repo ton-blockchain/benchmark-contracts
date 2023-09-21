@@ -13,7 +13,7 @@ import {
 } from '@ton/core';
 
 export type MasterCounterConfig = {
-    initializer: Address;
+    owner: Address;
     publicKey: Buffer;
 };
 
@@ -23,16 +23,19 @@ export function masterCounterConfigToCell(config: MasterCounterConfig): Cell {
     _$1 counter:uint256 history:(HashmapE 48 uint64) public_key:uint256 counter_code:^Cell = Storage;
     */
     return beginCell()
-        .storeBit(0) // uninit
-        .storeAddress(config.initializer)
+        .storeAddress(config.owner)
         .storeUint(0, 256) // counter
         .storeDict(Dictionary.empty()) // history
         .storeBuffer(config.publicKey, 32)
+        .storeRef(Cell.EMPTY)
         .endCell(); // to be filled on init
 }
 
 export class MasterCounter implements Contract {
-    constructor(readonly address: Address, readonly init?: { code: Cell; data: Cell }) {}
+    constructor(
+        readonly address: Address,
+        readonly init?: { code: Cell; data: Cell }
+    ) {}
 
     static createFromAddress(address: Address) {
         return new MasterCounter(address);
@@ -44,7 +47,7 @@ export class MasterCounter implements Contract {
         return new MasterCounter(contractAddress(workchain, init), init);
     }
 
-    async sendDeploy(provider: ContractProvider, via: Sender, counterCode: Cell, value: bigint = toNano('1')) {
+    async sendCounterCode(provider: ContractProvider, via: Sender, counterCode: Cell, value: bigint = toNano('1')) {
         await provider.internal(via, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,

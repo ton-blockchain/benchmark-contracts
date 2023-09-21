@@ -18,7 +18,7 @@
 const monkey_mode = 0;
 const max_retranslators = 512;
 const max_counters = 12;
-const shard_calc_tries_limit = 5;
+const shard_calc_tries_limit = 1;
 
 const chance_base = 65535;
 ;; This amount should be enough for counter to init

@@ -1,4 +1,4 @@
-import { Address, Cell, Dictionary, SendMode, fromNano, toNano } from '@ton/core';
+import { SendMode, fromNano, toNano } from '@ton/core';
 import { MasterCounter } from '../wrappers/MasterCounter';
 import { compile, NetworkProvider, sleep } from '@ton/blueprint';
 import { monitorTPSfromMaster, now, readCreateKeyPair, setMasterCounter } from '../wrappers/utils';
@@ -35,7 +35,7 @@ export async function run(provider: NetworkProvider) {
 
     const masterCounter = provider.open(
         MasterCounter.createFromConfig(
-            { initializer: deployerAddr, publicKey: keypair.publicKey },
+            { owner: deployerAddr, publicKey: keypair.publicKey },
             masterCounterCode,
             -1 // workchain = masterchain
         )
@@ -50,10 +50,10 @@ export async function run(provider: NetworkProvider) {
         Retranslator.createFromConfig({ id: 0, keypair, counterCode }, retranslatorCode)
     );
 
-    ui.write('Deploying master counter contract to the masterchain, addr: ' + masterCounter.address.toString() + '\n');
-    await masterCounter.sendDeploy(sender, counterCode, masterCounterBalance);
+    ui.write('Deploying master counter to the masterchain and/or giving it the counter code, addr: ' + masterCounter.address.toString() + '\n');
+    await masterCounter.sendCounterCode(sender, counterCode, masterCounterBalance);
     await provider.waitForDeploy(masterCounter.address, 10);
-    ui.write('Deployed master counter: ' + masterCounter.address.toString() + '\n');
+    ui.write('Activated master counter: ' + masterCounter.address.toString() + '\n');
 
     const topupAmount = (spamConfig.amount || toNano(20000)) * BigInt(spamConfig.threads || 1) + toNano('1');
     try {
