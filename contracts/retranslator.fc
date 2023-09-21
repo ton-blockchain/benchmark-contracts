@@ -18,6 +18,7 @@
 const monkey_mode = 0;
 const max_retranslators = 512;
 const max_counters = 12;
+const shard_calc_tries_limit = 5;
 
 const chance_base = 65535;
 ;; This amount should be enough for counter to init
@@ -97,17 +98,23 @@ global int counter_addr_hash;
 
   int found? = false;
   int next_hop = random() % max_retranslators;
+  int tries = 0;
   do {
     ;; if any shard hop - then just select the random hop
     ;; if the same needed - then check random retranslators until found
     next_hop_initstate = retranslator_init(next_hop, public_key, own_code, counter_code);
     next_hop_address = calc_address(next_hop_initstate);
-    (_, int hop_addr_hash) = parse_std_addr(my_address());
+    (_, int hop_addr_hash) = parse_std_addr(next_hop_address);
     int next_hop_shard = hop_addr_hash >> (256 - max_shard_depth);
     found? = any_shard_hop? ? true : (next_hop_shard == my_shard);
     next_hop += 1;
     if (next_hop >= max_retranslators) {
       next_hop = 0;
+    }
+    tries += 1;
+    if ((tries >= shard_calc_tries_limit) & (~ found?)) {
+      next_hop_address = my_address();
+      found? = true;
     }
   } until found?;
 

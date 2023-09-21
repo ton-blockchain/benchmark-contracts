@@ -78,21 +78,24 @@ Here are the parameters you may change for benchmarking:
 -   `max_retranslators` [in
     retranslator.fc](contracts/retranslator.fc#L19) - the maximum number
     of retranslator id. Roughly, how much retranslators to use.
--   `max_counters` [in retranslator.fc](contracts/retranslator.fc#L20)
-    -   the maximum number of counter. id. Making it large will sometimes
-        decrease the frequency of reports to the master counter.
+-   `max_counters` [in retranslator.fc](contracts/retranslator.fc#L20) -
+    the maximum number of counter. id. Making it large will sometimes
+    decrease the frequency of reports to the master counter.
 -   `monkey_mode` [in retranslator.fc](contracts/retranslator.fc#L18) - if
     set to -1 (true), the system will switch to the mode when the
     retranslator self-destructs after the hop. This is designed to reduce
     the state change in the block (the contract will be uninit-\>uninit,
     instead of uninit-\>init), reduce the cost and increase TPS.
--   `master_report_timestep` [in utils.fc](contracts/imports/utils.fc#L3)
-    -   the time required to pass for a Counter to report again to master.
+-   `shard_calc_tries_limit` [in retranslator.fc](contracts/retranslator.fc#L21) -
+    the maximum number of tries to calculate the shard of the next retranslator.
+    If exceeds - uses itself for the next hop.
+-   `master_report_timestep` [in utils.fc](contracts/imports/utils.fc#L3) -
+    the time required to pass for a Counter to report again to master.
 -   `count_report_as_tx` [in counter.fc](contracts/counter.fc#L18) - if
     set to -1 (true), counter will count the message from the retranslator
     as hop.
 -   `history_step` [in
-    master\_counter.fc](contracts/master_counter.fc#L13) \- the
+    master\_counter.fc](contracts/master_counter.fc#L13) - the
     discreteness with which transactions will be written in the history
     dictionary.
 
