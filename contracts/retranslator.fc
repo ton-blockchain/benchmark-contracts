@@ -12,37 +12,44 @@
 #include "imports/utils.fc";
 
 {-
-  _# id:uint16 seqno:uint32 public_key:uint256 own_code:^Cell counter_code:^Cell = Storage;
+  _# id:uint16 seqno:uint32 public_key:uint256 found_counter:uint32 next_counter_to_calc:int32 own_code:^Cell counter_code:^Cell = Storage;
 -}
 
 const monkey_mode = 0;
 const max_retranslators = 512;
-const max_counters = 12;
-const shard_calc_tries_limit = 1;
+const counter_calc_tries_per_hop = 100;
+const retranslator_calc_tries_limit = 5;
 
 const chance_base = 65535;
 ;; This amount should be enough for counter to init
 ;; and send a report to master:
 const report_amount = 90000000; ;; 0.09 TON
 
-
-(int, int, int, cell, cell) load_data() inline {
-  ;; my_id, seqno, pubic_key, own_code, counter_code
-  slice ds = get_data().begin_parse();
-  return (ds~load_uint(16), ds~load_uint(32),
-          ds~load_uint(256), ds~load_ref(), ds.preload_ref());
-}
-
-;; arguments for retranslate()
+;; storage variables and arguments for retranslate()
 global int same_shard_chance;
 global int remaining_hops;
 global int split_hops;
 global int id;
 global int txs_per_report;
+global int stored_seqno;
 global int public_key;
 global cell own_code;
+global int found_counter;
+global int next_counter_to_calc;
 global cell counter_code;
 global slice payload;
+
+() load_data() impure inline {
+  slice ds = get_data().begin_parse();
+
+  id = ds~load_uint(16);
+  stored_seqno = ds~load_uint(32);
+  public_key = ds~load_uint(256);
+  found_counter = ds~load_uint(32);
+  next_counter_to_calc = ds~load_int(32);
+  own_code = ds~load_ref();
+  counter_code = ds.preload_ref();
+}
 
 ;; variables to set in loops & ifs
 global cell next_hop_initstate;
@@ -51,27 +58,38 @@ global int my_shard;
 global int max_shard_depth;
 global cell counter_initstate;
 global int counter_addr_hash;
+global int counter_id;
+global cell counter_initstate;
+global int counter_addr_hash;
 
 () send_report(int any_shard?) impure inline {
-  ;; This exceeds the gas limit:
-  int found? = false;
-  int counter_id = random() % max_counters;
-  int first_checked_counter = counter_id; ;; to prevent infinite loop
-
-  do {
+  if (any_shard?) {
+    counter_id = random() % max_shard_depth;
     counter_initstate = counter_init(counter_id, public_key, counter_code);
     counter_addr_hash = cell_hash(counter_initstate);
-    int counter_shard = counter_addr_hash >> (256 - max_shard_depth);
-    found? = any_shard? ? true : (counter_shard == my_shard);
-    counter_id += 1;
-    if (counter_id >= max_counters) {
-      counter_id = 0;
+  }
+  else {
+    if (next_counter_to_calc != -1) { ;; if counter is not found yet - try to calc it
+      int tries = 0;
+      do {
+        counter_initstate = counter_init(next_counter_to_calc, public_key, counter_code);
+        counter_addr_hash = cell_hash(counter_initstate);
+        int counter_shard = counter_addr_hash >> (256 - max_shard_depth);
+        if (counter_shard == my_shard) {
+          found_counter = next_counter_to_calc;
+          next_counter_to_calc = -1;
+          tries = counter_calc_tries_per_hop; ;; break
+        } else {
+          next_counter_to_calc += 1;
+          tries += 1;
+        }
+      } until (tries >= counter_calc_tries_per_hop)
+    } else { ;; means we've found the counter
+      counter_id = found_counter;
+      counter_initstate = counter_init(counter_id, public_key, counter_code);
+      counter_addr_hash = cell_hash(counter_initstate);
     }
-  } until (found? | (counter_id == first_checked_counter)); ;; don't loop it
-
-  int counter_id = random() % max_counters;
-  counter_initstate = counter_init(counter_id, public_key, counter_code);
-  counter_addr_hash = cell_hash(counter_initstate);
+  }
 
   var report_msg = begin_cell()
     .store_uint(0x10, 6)
@@ -112,7 +130,7 @@ global int counter_addr_hash;
       next_hop = 0;
     }
     tries += 1;
-    if ((tries >= shard_calc_tries_limit) & (~ found?)) {
+    if ((tries >= retranslator_calc_tries_limit) & (~ found?)) {
       next_hop_address = my_address();
       found? = true;
     }
@@ -166,7 +184,7 @@ global int counter_addr_hash;
   slice sender_address = cs~load_msg_addr();
   int sender_id = in_msg_body~load_uint(16);
 
-  (id, _, public_key, own_code, counter_code) = load_data();
+  load_data();
 
   slice expected_address = calc_address(retranslator_init(sender_id, public_key, own_code, counter_code));
   throw_unless(401, equal_slice_bits(expected_address, sender_address));
@@ -197,6 +215,7 @@ global int counter_addr_hash;
   } else {
     retranslate(0); ;; send all incoming value
   }
+  set_data(pack_retranslator_data(id, stored_seqno, public_key, found_counter, next_counter_to_calc, own_code, counter_code));
 }
 
 
@@ -205,7 +224,7 @@ global int counter_addr_hash;
   var cs = in_msg;
   var (subwallet_id, valid_until, msg_seqno) = (cs~load_uint(32), cs~load_uint(32), cs~load_uint(32));
   throw_if(35, valid_until <= now());
-  (id, int stored_seqno, public_key, own_code, counter_code) = load_data();
+  load_data();
   throw_unless(33, msg_seqno == stored_seqno);
   throw_unless(34, subwallet_id == id);
   throw_unless(35, check_signature(slice_hash(in_msg), signature, public_key));
@@ -233,7 +252,7 @@ global int counter_addr_hash;
       ;; just send a message
       send_raw_message(cs~load_ref(), mode);
   }
-  set_data(pack_retranslator_data(id, stored_seqno + 1, public_key, own_code, counter_code));
+  set_data(pack_retranslator_data(id, stored_seqno + 1, public_key, found_counter, next_counter_to_calc, own_code, counter_code));
 }
 
 ;;
@@ -241,11 +260,11 @@ global int counter_addr_hash;
 ;;
 
 int seqno() method_id {
-  var (_, stored_seqno, _, _, _) = load_data();
+  load_data();
   return stored_seqno;
 }
 
 int get_public_key() method_id {
-  var (_, _, public_key, _, _) = load_data();
+  load_data();
   return public_key;
 }

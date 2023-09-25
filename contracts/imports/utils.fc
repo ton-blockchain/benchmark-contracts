@@ -10,10 +10,14 @@ const workchain = 0;
 ;; Account states utilities:
 ;;
 
-cell pack_retranslator_data(int id, int seqno, int public_key, cell own_code, cell counter_code) inline {
+cell pack_retranslator_data(int id, int seqno, int public_key,
+                            int found_counter, int next_counter_to_calc,
+                            cell own_code, cell counter_code) inline {
   return begin_cell().store_uint(id, 16)
                      .store_uint(seqno, 32)
                      .store_uint(public_key, 256)
+                     .store_uint(found_counter, 32)
+                     .store_int(next_counter_to_calc, 32)
                      .store_ref(own_code)
                      .store_ref(counter_code)
           .end_cell();
@@ -33,7 +37,7 @@ cell state_init(cell code, cell data) inline {
 }
 
 cell retranslator_init(int id, int public_key, cell own_code, cell counter_code) inline {
-    return state_init(own_code, pack_retranslator_data(id, 0, public_key, own_code, counter_code));
+    return state_init(own_code, pack_retranslator_data(id, 0, public_key, 0, 0, own_code, counter_code));
 }
 
 cell counter_init(int counter_id, int public_key, cell code) inline {

@@ -25,6 +25,8 @@ export function retranslatorConfigToCell(config: RetranslatorConfig, code: Cell)
         .storeUint(config.id, 16)
         .storeUint(0, 32) // seqno
         .storeBuffer(config.keypair.publicKey, 32)
+        .storeUint(0, 32) // found_counter
+        .storeInt(0, 32) // next_counter_to_calc
         .storeRef(code)
         .storeRef(config.counterCode)
         .endCell();
