@@ -132,7 +132,7 @@ global int counter_addr_hash;
     .store_ref(next_hop_initstate);
   var hop_msg_body = begin_cell()
     .store_uint(id, 16)
-    .store_uint(remaining_hops, 16)
+    .store_uint(remaining_hops, 32)
     .store_uint(split_hops, 8)
     .store_uint(txs_per_report, 16)
     .store_uint(same_shard_chance, 16)
@@ -147,7 +147,7 @@ global int counter_addr_hash;
 }
 
 {-
-  retransalate#_ id:uint16 remaining_hops:uint16 split_hops:uint8 txs_per_report:uint16 same_shard_chance:uint16 payload:Cell = IntMsgBody;
+  retransalate#_ id:uint16 remaining_hops:uint32 split_hops:uint8 txs_per_report:uint16 same_shard_chance:uint16 payload:Cell = IntMsgBody;
 -}
 
 () main(int msg_value, cell in_msg_full, slice in_msg_body) {
@@ -171,7 +171,7 @@ global int counter_addr_hash;
   slice expected_address = calc_address(retranslator_init(sender_id, public_key, own_code, counter_code));
   throw_unless(401, equal_slice_bits(expected_address, sender_address));
 
-  remaining_hops = in_msg_body~load_uint(16);
+  remaining_hops = in_msg_body~load_uint(32);
   split_hops = in_msg_body~load_uint(8);
   txs_per_report = in_msg_body~load_uint(16);
   same_shard_chance = in_msg_body~load_uint(16);
@@ -219,7 +219,7 @@ global int counter_addr_hash;
        txs_per_report,
        same_shard_chance,
        int amount) = (cs~load_uint(8),
-                      cs~load_uint(16),
+                      cs~load_uint(32),
                       cs~load_uint(8),
                       cs~load_uint(16),
                       cs~load_uint(16),
