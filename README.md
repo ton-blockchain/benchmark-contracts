@@ -90,9 +90,12 @@ Here are the parameters you may change for benchmarking:
     If exceeds - uses itself for the next hop.
 -   `monkey_mode` [in retranslator.fc](contracts/retranslator.fc#L18) - if
     set to -1 (true), the system will switch to the mode when the
-    retranslator self-destructs after the hop. This is designed to reduce
-    the state change in the block (the contract will be uninit-\>uninit,
-    instead of uninit-\>init), reduce the cost and increase TPS.
+    retranslator self-destructs after the hop. This is designed to test
+    behavior under reduced state change per tx in the block:
+    if contract goes uninit-\>uninit, instead of uninit-\>init block proof doesn't
+    need to contain merkle tree of state update (note that even if contract storage
+    is unchanged, for existing account update of `last_lt`/`last_hash` causes state
+    update)
 -   `master_report_timestep` [in utils.fc](contracts/imports/utils.fc#L3) -
     the time required to pass for a Counter to report again to master.
 -   `count_report_as_tx` [in counter.fc](contracts/counter.fc#L18) - if
