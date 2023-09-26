@@ -1,23 +1,27 @@
 # Benchmark Contracts with monitoring
 
-This contract system is needed to test the TON blockchain for the maximum
-number of transactions per second. When TPS exceeds some values, it
-becomes difficult to count it off-chain in ways like indexers, because
-they use databases that are not as fast as TON.
+This contract system is developed for TON blockchain stress-testing and optimization 
+of transactions per second performance. When TPS exceeds some values, it
+becomes impossible to count it off-chain in ways like indexers, because
+they use databases that are not as fast as TON. Thanks to powerful smart-contract system
+TON can act as a database itself and through special set of contracts count TPS load.
 
-In this system, one type of contract called _Retranslator_ works a bit
-like
-[jettons](https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md)
-and a bit like
-[wallets](https://ton-community.github.io/tutorials/01-wallet/), but
-cyclically calling its copies. Every few such hops, a report is sent to
-the _Counter Contract_, of which there are also several and which are
-located in basechain. And _Counter Contracts_ send reports to the _Master
-Counter Contract_ every few seconds. And this one also saves the results
-to the _history_ - hashmap, where each second corresponds to the number of
-transactions.
+To optimize performance for real life usage it is important that load created by benchmark
+is similiar to that characteristic for Dapps.
 
-#### Detailed description in code:
+In this system, one type of contract called _Retranslator_ implements logic similar to [jettons](https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md) plus some functionality of
+[wallets](https://ton-community.github.io/tutorials/01-wallet/). Thus main load created
+by this benchmark is analogous to chained jetton transfers. 
+Every few such transfers (or *hops*), a report is sent to
+one of intermediate _Counter Contracts_ located in basechain.
+And _Counter Contracts_, in turn, from time to time, sends reports to the _Master
+Counter Contract_ every few seconds which resides in masterchain.
+_Master Counter Contract_ saves the results to the _history_ - hashmap with _timestamp -> TPS_ data.
+
+**This contract system allows to trustlessly monitor TPS load created in all shardchains
+by verifying only Masterchain and polling one contract get method**
+
+### Detailed description in code:
 
 -   [Retranslator](contracts/counter.fc)
 -   [Counter](contracts/counter.fc)
@@ -86,9 +90,12 @@ Here are the parameters you may change for benchmarking:
     If exceeds - uses itself for the next hop.
 -   `monkey_mode` [in retranslator.fc](contracts/retranslator.fc#L18) - if
     set to -1 (true), the system will switch to the mode when the
-    retranslator self-destructs after the hop. This is designed to reduce
-    the state change in the block (the contract will be uninit-\>uninit,
-    instead of uninit-\>init), reduce the cost and increase TPS.
+    retranslator self-destructs after the hop. This is designed to test
+    behavior under reduced state change per tx in the block:
+    if contract goes uninit-\>uninit, instead of uninit-\>init block proof doesn't
+    need to contain merkle tree of state update (note that even if contract storage
+    is unchanged, for existing account update of `last_lt`/`last_hash` causes state
+    update)
 -   `master_report_timestep` [in utils.fc](contracts/imports/utils.fc#L3) -
     the time required to pass for a Counter to report again to master.
 -   `count_report_as_tx` [in counter.fc](contracts/counter.fc#L18) - if
