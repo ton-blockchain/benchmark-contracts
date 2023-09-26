@@ -70,6 +70,7 @@ const history_step = 5;
     var (per_step, reminder) = divmod(to_add, steps);
 
     int time = from_time;
+    time -= time % history_step; ;; round down
     while (steps > 0) {
         int time_txs = per_step;
         (slice history_value, int found?) = history.udict_get?(48, time);
