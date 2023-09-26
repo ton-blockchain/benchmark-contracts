@@ -58,22 +58,23 @@ global int my_shard;
 global int max_shard_depth;
 global cell counter_initstate;
 global int counter_addr_hash;
-global int counter_id;
 global cell counter_initstate;
 global int counter_addr_hash;
 
+
+() calc_counter(int id) impure inline {
+  counter_initstate = counter_init(id, public_key, counter_code);
+  counter_addr_hash = cell_hash(counter_initstate);
+}
 () send_report(int any_shard?) impure inline {
   if (any_shard?) {
-    counter_id = random() % max_shard_depth;
-    counter_initstate = counter_init(counter_id, public_key, counter_code);
-    counter_addr_hash = cell_hash(counter_initstate);
+    calc_counter(random() % max_shard_depth);
   }
   else {
     if (next_counter_to_calc != -1) { ;; if counter is not found yet - try to calc it
       int tries = 0;
       do {
-        counter_initstate = counter_init(next_counter_to_calc, public_key, counter_code);
-        counter_addr_hash = cell_hash(counter_initstate);
+        calc_counter(next_counter_to_calc);
         int counter_shard = counter_addr_hash >> (256 - max_shard_depth);
         if (counter_shard == my_shard) {
           found_counter = next_counter_to_calc;
@@ -85,12 +86,9 @@ global int counter_addr_hash;
         }
       } until (tries >= counter_calc_tries_per_hop)
     } else { ;; means we've found the counter
-      counter_id = found_counter;
-      counter_initstate = counter_init(counter_id, public_key, counter_code);
-      counter_addr_hash = cell_hash(counter_initstate);
+      calc_counter(found_counter);
     }
   }
-
   var report_msg = begin_cell()
     .store_uint(0x10, 6)
     .store_uint(0x400, 11) ;; address serialization and wc
@@ -102,6 +100,7 @@ global int counter_addr_hash;
     .store_uint(txs_per_report, 16);
   send_raw_message(report_msg.end_cell(), 3);
 }
+
 
 () retranslate(int amount) impure {
   randomize_lt();
@@ -163,6 +162,7 @@ global int counter_addr_hash;
   if (monkey_mode) { send_mode += 32; } ;; self-destroy if zero balance
   send_raw_message(hop_msg.end_cell(), send_mode);
 }
+
 
 {-
   retransalate#_ id:uint16 remaining_hops:uint32 split_hops:uint8 txs_per_report:uint16 same_shard_chance:uint16 payload:Cell = IntMsgBody;
