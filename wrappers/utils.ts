@@ -6,6 +6,8 @@ import { MasterCounter } from './MasterCounter';
 import { NetworkProvider, UIProvider, sleep } from '@ton/blueprint';
 import { TonClient4 } from '@ton/ton';
 
+const HISTORY_GAP = 60;
+
 export const auto = path.join(__dirname, '..', 'contracts', 'auto');
 
 export async function setMasterCounter(masterCounter: Address) {
@@ -184,7 +186,7 @@ export async function monitorTPSfromMaster(masterCounter: OpenedContract<MasterC
         const time = now();
         try {
             const history = await masterCounter.getHistory();
-            const avg = tpsForLastNSeconds(history, time - 10); // last second are not avaiable(
+            const avg = tpsForLastNSeconds(history, time - HISTORY_GAP); // last second are not avaiable(
             if (avg == 0) zeroQueue++;
             else zeroQueue = 0;
             ui.setActionPrompt('Running: ' + avg + ' TPS');
