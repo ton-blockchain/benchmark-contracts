@@ -5,11 +5,11 @@ import { monitorTPSfromMaster, now, readCreateKeyPair, setMasterCounter } from '
 import { Retranslator, RetranslatorOptions } from '../wrappers/Retranslator';
 
 const spamConfig: RetranslatorOptions = {
-    amount: toNano(150),
-    hops: 10000,
-    threads: 2,
-    splitHops: 0,
-    sameShardProbability: 0,
+    amount: toNano(4000000),
+    hops: 999999999,
+    threads: 20,
+    splitHops: 9,
+    sameShardProbability: 1.0,
 };
 
 const masterCounterBalance = toNano('100');

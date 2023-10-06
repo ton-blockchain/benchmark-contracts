@@ -63,6 +63,9 @@ const min_balance = 5000000; ;; 0.005 TON
     int to_add = in_msg_body~load_uint(16);
     counter += to_add - count_report_as_tx; ;; if true - adding one (-(-1)), if false - nothing
 
+    if (last_sync == 0) {
+      last_sync = now() + random() % master_report_timestep;
+    }
     if (last_sync + master_report_timestep <= now()) {
         push_to_master(master_counter_address, my_id, counter, last_sync);
         last_sync = now();

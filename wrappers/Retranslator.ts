@@ -70,7 +70,7 @@ export class Retranslator implements Contract {
             .storeUint(opts.threads == undefined ? 1 : opts.threads, 8)
             .storeUint(opts.hops == undefined ? 20000 : opts.hops, 32)
             .storeUint(opts.splitHops == undefined ? 5 : opts.splitHops, 8)
-            .storeUint(opts.txsPerReport == undefined ? 8 : opts.txsPerReport, 16)
+            .storeUint(opts.txsPerReport == undefined ? 1000 : opts.txsPerReport, 16)
             .storeUint(
                 opts.sameShardProbability == undefined //
                     ? fl(0.5 * CHANCE_BASE) // 50% by default

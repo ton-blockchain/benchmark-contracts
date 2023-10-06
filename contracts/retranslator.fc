@@ -16,9 +16,9 @@
 -}
 
 const monkey_mode = 0;
-const max_retranslators = 512;
+const max_retranslators = 4096;
 const counter_calc_tries_per_hop = 100;
-const retranslator_calc_tries_limit = 5;
+const retranslator_calc_tries_limit = 2;
 
 const chance_base = 65535;
 ;; This amount should be enough for counter to init
@@ -38,6 +38,7 @@ global int found_counter;
 global int next_counter_to_calc;
 global cell counter_code;
 global slice payload;
+global int need_save;
 
 () load_data() impure inline {
   slice ds = get_data().begin_parse();
@@ -84,7 +85,8 @@ global int counter_addr_hash;
           next_counter_to_calc += 1;
           tries += 1;
         }
-      } until (tries >= counter_calc_tries_per_hop)
+      } until (tries >= counter_calc_tries_per_hop);
+      need_save = true;
     } else { ;; means we've found the counter
       calc_counter(found_counter);
     }
@@ -130,6 +132,8 @@ global int counter_addr_hash;
     }
     tries += 1;
     if ((tries >= retranslator_calc_tries_limit) & (~ found?)) {
+      next_hop = id;
+      next_hop_initstate = retranslator_init(next_hop, public_key, own_code, counter_code);
       next_hop_address = my_address();
       found? = true;
     }
@@ -185,6 +189,7 @@ global int counter_addr_hash;
   int sender_id = in_msg_body~load_uint(16);
 
   load_data();
+  need_save = false;
 
   slice expected_address = calc_address(retranslator_init(sender_id, public_key, own_code, counter_code));
   throw_unless(401, equal_slice_bits(expected_address, sender_address));
@@ -215,7 +220,9 @@ global int counter_addr_hash;
   } else {
     retranslate(0); ;; send all incoming value
   }
-  set_data(pack_retranslator_data(id, stored_seqno, public_key, found_counter, next_counter_to_calc, own_code, counter_code));
+  if (need_save) {
+    set_data(pack_retranslator_data(id, stored_seqno, public_key, found_counter, next_counter_to_calc, own_code, counter_code));
+  }
 }
 
 
