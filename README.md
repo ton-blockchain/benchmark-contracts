@@ -29,8 +29,9 @@ by verifying only Masterchain and polling one contract get method**
 
 ## Usage
 
-> ⚠️ Currently, to run in _ownnet_ (MyLocalTon) or in _Perfnet_, use
-> [Blueprint from PR #65](https://github.com/ton-org/blueprint/pull/65)
+> ⚠️ Currently, to run in _ownnet_ (MyLocalTon) or in _Perfnet_, you need to install
+> [Blueprint](https://github.com/ton-org/blueprint/) manually, with `npx install-local`.
+> Because the changes were not published to npm.
 
 ### Deploy and start
 
