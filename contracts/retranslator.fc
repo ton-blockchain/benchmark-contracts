@@ -235,29 +235,26 @@ global int counter_addr_hash;
   throw_unless(33, msg_seqno == stored_seqno);
   throw_unless(34, subwallet_id == id);
   throw_unless(35, check_signature(slice_hash(in_msg), signature, public_key));
+  throw_unless(36, (subwallet_id == 0) & (stored_seqno == 0));  ;; Allow starting spam only once
   accept_message();
 
   var mode = cs~load_uint(8);
-  if(mode == 255) { ;; retranslate mode. otherwise act like a wallet
-      (int threads, ;; a number of tx-chains to start
-       remaining_hops,
-       split_hops,
-       txs_per_report,
-       same_shard_chance,
-       int amount) = (cs~load_uint(8),
-                      cs~load_uint(32),
-                      cs~load_uint(8),
-                      cs~load_uint(16),
-                      cs~load_uint(16),
-                      cs~load_coins());
-      payload = cs;
-      while (threads > 0) {
-        retranslate(amount);
-        threads -= 1;
-      }
-  } else {
-      ;; just send a message
-      send_raw_message(cs~load_ref(), mode);
+  throw_unless(37, mode == 255);
+  (int threads, ;; a number of tx-chains to start
+   remaining_hops,
+   split_hops,
+   txs_per_report,
+   same_shard_chance,
+   int amount) = (cs~load_uint(8),
+                  cs~load_uint(32),
+                  cs~load_uint(8),
+                  cs~load_uint(16),
+                  cs~load_uint(16),
+                  cs~load_coins());
+  payload = cs;
+  while (threads > 0) {
+    retranslate(amount);
+    threads -= 1;
   }
   set_data(pack_retranslator_data(id, stored_seqno + 1, public_key, found_counter, next_counter_to_calc, own_code, counter_code));
 }
