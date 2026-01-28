@@ -12,3 +12,4 @@ scripts/ton_keystore/
 .yarn/
 .yarnrc.yml
 yarn-error.log
+.DS_Store

@@ -1,4 +1,14 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, SendMode, toNano } from '@ton/core';
+import {
+    Address,
+    beginCell,
+    Cell,
+    Contract,
+    contractAddress,
+    ContractProvider,
+    Sender,
+    SendMode,
+    toNano,
+} from '@ton/core';
 import { KeyPair, sign } from '@ton/crypto';
 
 const CHANCE_BASE = 65535;
@@ -36,7 +46,7 @@ export class Retranslator implements Contract {
     constructor(
         readonly address: Address,
         readonly config: RetranslatorConfig,
-        readonly init?: { code: Cell; data: Cell }
+        readonly init?: { code: Cell; data: Cell },
     ) {}
 
     static createFromAddress(address: Address, config: RetranslatorConfig) {
@@ -59,6 +69,13 @@ export class Retranslator implements Contract {
         await provider.external(query);
     }
 
+    async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
+        await provider.internal(via, {
+            value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+        });
+    }
+
     async sendStart(provider: ContractProvider, opts: RetranslatorOptions = {}, now?: number) {
         let seqno = await this.getSeqno(provider);
         if (seqno == -1) seqno = 0;
@@ -69,13 +86,13 @@ export class Retranslator implements Contract {
             .storeUint(255, 8) // mode = retranslate
             .storeUint(opts.threads == undefined ? 1 : opts.threads, 8)
             .storeUint(opts.hops == undefined ? 20000 : opts.hops, 32)
-            .storeUint(opts.splitHops == undefined ? 5 : opts.splitHops, 8)
+            .storeUint(opts.splitHops == undefined ? 5 : opts.splitHops, 32)
             .storeUint(opts.txsPerReport == undefined ? 1000 : opts.txsPerReport, 16)
             .storeUint(
                 opts.sameShardProbability == undefined //
                     ? fl(0.5 * CHANCE_BASE) // 50% by default
                     : fl(opts.sameShardProbability * CHANCE_BASE),
-                16
+                16,
             )
             .storeCoins(opts.amount == undefined ? toNano('99') : opts.amount);
         if (opts.extraDataSizeBytesOrRef instanceof Cell) {

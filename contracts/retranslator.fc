@@ -15,8 +15,9 @@
   _# id:uint16 seqno:uint32 public_key:uint256 found_counter:uint32 next_counter_to_calc:int32 own_code:^Cell counter_code:^Cell = Storage;
 -}
 
+const end_at = 1712684702;
 const monkey_mode = 0;
-const max_retranslators = 4096;
+const max_retranslators = 1000;
 const counter_calc_tries_per_hop = 100;
 const retranslator_calc_tries_limit = 2;
 
@@ -39,7 +40,6 @@ global int next_counter_to_calc;
 global cell counter_code;
 global slice payload;
 global int need_save;
-
 () load_data() impure inline {
   slice ds = get_data().begin_parse();
 
@@ -154,7 +154,7 @@ global int counter_addr_hash;
   var hop_msg_body = begin_cell()
     .store_uint(id, 16)
     .store_uint(remaining_hops, 32)
-    .store_uint(split_hops, 8)
+    .store_uint(split_hops, 32)
     .store_uint(txs_per_report, 16)
     .store_uint(same_shard_chance, 16)
     .store_slice(payload)
@@ -169,7 +169,7 @@ global int counter_addr_hash;
 
 
 {-
-  retransalate#_ id:uint16 remaining_hops:uint32 split_hops:uint8 txs_per_report:uint16 same_shard_chance:uint16 payload:Cell = IntMsgBody;
+  retransalate#_ id:uint16 remaining_hops:uint32 split_hops:uint32 txs_per_report:uint16 same_shard_chance:uint16 payload:Cell = IntMsgBody;
 -}
 
 () main(int msg_value, cell in_msg_full, slice in_msg_body) {
@@ -179,6 +179,10 @@ global int counter_addr_hash;
   }
   
   check_spam_config();
+
+  if (now() > end_at) {
+      return ();
+  }
 
   slice cs = in_msg_full.begin_parse();
   int flags = cs~load_uint(4);
@@ -195,7 +199,7 @@ global int counter_addr_hash;
   throw_unless(401, equal_slice_bits(expected_address, sender_address));
 
   remaining_hops = in_msg_body~load_uint(32);
-  split_hops = in_msg_body~load_uint(8);
+  split_hops = in_msg_body~load_uint(32);
   txs_per_report = in_msg_body~load_uint(16);
   same_shard_chance = in_msg_body~load_uint(16);
 
@@ -247,7 +251,7 @@ global int counter_addr_hash;
    same_shard_chance,
    int amount) = (cs~load_uint(8),
                   cs~load_uint(32),
-                  cs~load_uint(8),
+                  cs~load_uint(32),
                   cs~load_uint(16),
                   cs~load_uint(16),
                   cs~load_coins());

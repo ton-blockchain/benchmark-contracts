@@ -5,11 +5,11 @@ import { monitorTPSfromMaster, now, readCreateKeyPair, setMasterCounter } from '
 import { Retranslator, RetranslatorOptions } from '../wrappers/Retranslator';
 
 const spamConfig: RetranslatorOptions = {
-    amount: toNano(4000000),
+    amount: toNano(300000),
     hops: 999999999,
-    threads: 20,
-    splitHops: 9,
-    sameShardProbability: 1.0,
+    threads: 1,
+    splitHops: 1000000,
+    sameShardProbability: 0,
 };
 
 const masterCounterBalance = toNano('100');
@@ -24,9 +24,9 @@ export async function run(provider: NetworkProvider) {
             fromNano(
                 (spamConfig.amount || toNano(20000)) * BigInt(spamConfig.threads || 1) +
                     masterCounterBalance +
-                    toNano(1)
+                    toNano(1),
             ) +
-            ' TON for this action. Press Enter to continue...'
+            ' TON for this action. Press Enter to continue...',
     );
 
     const keypair = await readCreateKeyPair();
@@ -37,8 +37,8 @@ export async function run(provider: NetworkProvider) {
         MasterCounter.createFromConfig(
             { owner: deployerAddr, publicKey: keypair.publicKey },
             masterCounterCode,
-            -1 // workchain = masterchain
-        )
+            -1, // workchain = masterchain
+        ),
     );
 
     setMasterCounter(masterCounter.address);
@@ -47,29 +47,41 @@ export async function run(provider: NetworkProvider) {
     const counterCode = await compile('Counter');
 
     const retranslator0 = provider.open(
-        Retranslator.createFromConfig({ id: 0, keypair, counterCode }, retranslatorCode)
+        Retranslator.createFromConfig({ id: 0, keypair, counterCode }, retranslatorCode),
     );
 
-    ui.write('Deploying master counter to the masterchain and/or giving it the counter code, addr: ' + masterCounter.address.toString() + '\n');
-    await masterCounter.sendCounterCode(sender, counterCode, masterCounterBalance);
-    await provider.waitForDeploy(masterCounter.address, 10);
-    ui.write('Activated master counter: ' + masterCounter.address.toString() + '\n');
+    try {
+        // check if active
+        await masterCounter.getCounter();
+        ui.write('Active master counter addr: ' + masterCounter.address.toString() + '\n');
+    } catch {
+        ui.write(
+            'Deploying master counter to the masterchain and/or giving it the counter code, addr: ' +
+                masterCounter.address.toString() +
+                '\n',
+        );
+
+        await masterCounter.sendCounterCode(sender, counterCode, masterCounterBalance);
+        await provider.waitForDeploy(masterCounter.address, 10);
+        ui.write('Activated master counter: ' + masterCounter.address.toString() + '\n');
+    }
 
     const topupAmount = (spamConfig.amount || toNano(20000)) * BigInt(spamConfig.threads || 1) + toNano('1');
     try {
-        ui.write('Trying to topup from connected wallet (won\'t work with mobile wallets)');
-        await sender.send({
-            to: retranslator0.address,
-            value: topupAmount,
-            bounce: false,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-        });
+        ui.write("Trying to topup from connected wallet (won't work with mobile wallets)");
+        // await sender.send({
+        //     to: retranslator0.address,
+        //     value: topupAmount,
+        //     bounce: false,
+        //     sendMode: SendMode.PAY_GAS_SEPARATELY,
+        // });
+        await retranslator0.sendDeploy(sender, topupAmount);
     } catch {
         ui.write(
             'Please, topup the first retranslator with ' +
                 fromNano(topupAmount) +
                 ' TON: ' +
-                retranslator0.address.toString({ bounceable: false })
+                retranslator0.address.toString({ bounceable: false }),
         );
         await ui.input("Press Enter when you're ready...");
     }
