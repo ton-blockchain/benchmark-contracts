@@ -4,7 +4,7 @@ import path from 'path';
 import { getSecureRandomBytes, keyPairFromSecretKey, keyPairFromSeed } from '@ton/crypto';
 import { MasterCounter } from './MasterCounter';
 import { NetworkProvider, UIProvider, sleep } from '@ton/blueprint';
-import { TonClient4 } from '@ton/ton';
+import { TonClient, TonClient4 } from '@ton/ton';
 
 const HISTORY_GAP = 210;
 
@@ -14,7 +14,7 @@ export async function setMasterCounter(masterCounter: Address) {
     await mkdir(auto, { recursive: true });
     await writeFile(
         path.join(auto, `master-counter-address.fc`),
-        `const slice master_counter_address = "${masterCounter.toString()}"a;`
+        `const slice master_counter_address = "${masterCounter.toString()}"a;`,
     );
 }
 
@@ -96,7 +96,7 @@ export async function printSpamChain(transactions: Transaction[], masterCounter?
                 }
 
                 const valueIn = formatCoins(
-                    tx.inMessage?.info.type === 'internal' ? tx.inMessage.info.value.coins : undefined
+                    tx.inMessage?.info.type === 'internal' ? tx.inMessage.info.value.coins : undefined,
                 );
 
                 const valueOut = formatCoins(
@@ -105,12 +105,12 @@ export async function printSpamChain(transactions: Transaction[], masterCounter?
                         .reduce(
                             (total, message) =>
                                 total + (message.info.type === 'internal' ? message.info.value.coins : 0n),
-                            0n
-                        )
+                            0n,
+                        ),
                 );
 
                 const computeFees = formatCoins(
-                    tx.description.computePhase.type === 'vm' ? tx.description.computePhase.gasFees : undefined
+                    tx.description.computePhase.type === 'vm' ? tx.description.computePhase.gasFees : undefined,
                 );
 
                 const exitCode =
@@ -133,7 +133,7 @@ export async function printSpamChain(transactions: Transaction[], masterCounter?
                     actionCode: tx.description.actionPhase?.resultCode ?? 'N/A',
                 };
             })
-            .filter((v) => v !== undefined)
+            .filter((v) => v !== undefined),
     );
 }
 
@@ -151,7 +151,7 @@ export function printTPSHistory(history: Dictionary<number, bigint>) {
                     time,
                     txs,
                 };
-            })
+            }),
     );
     return secTxs;
 }
@@ -209,10 +209,12 @@ export async function parseIDFromData(provider: NetworkProvider, address: Addres
             .beginParse()
             .loadUint(16);
         return id;
-    } else {
+    } else if (api instanceof TonClient) {
         const account = await api.getContractState(address);
         if (account.state !== 'active' || !!!account.data) throw new Error("Given account isn't active.");
         const id = Cell.fromBoc(account.data)[0].beginParse().loadUint(16);
         return id;
+    } else {
+        throw 'Unsupported provider';
     }
 }
